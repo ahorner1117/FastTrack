@@ -1,20 +1,20 @@
 import React from 'react';
 import { StyleSheet, View, Text } from 'react-native';
-import { Timer } from 'lucide-react-native';
+import { Warehouse } from 'lucide-react-native';
 
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
 
-export default function TimerScreen() {
+export default function GarageScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'dark'];
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Timer color={colors.tint} size={64} />
-      <Text style={[styles.title, { color: colors.text }]}>Timer</Text>
+      <Warehouse color={colors.tint} size={64} />
+      <Text style={[styles.title, { color: colors.text }]}>Garage</Text>
       <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-        Acceleration timing coming soon
+        Your vehicles will appear here
       </Text>
     </View>
   );

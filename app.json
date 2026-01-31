@@ -11,18 +11,25 @@
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#000000"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.fasttrack.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "FastTrack uses your location to measure vehicle speed and distance for acceleration timing.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "FastTrack uses your location to measure vehicle speed and distance for acceleration timing.",
+        "NSMotionUsageDescription": "FastTrack uses motion sensors to enhance speed measurement accuracy.",
+        "UIBackgroundModes": ["location"]
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#000000"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "package": "com.fasttrack.app"
     },
     "web": {
       "bundler": "metro",

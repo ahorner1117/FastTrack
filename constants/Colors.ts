@@ -1,19 +1,27 @@
-const tintColorLight = '#2f95dc';
-const tintColorDark = '#fff';
+import { COLORS } from '../src/utils/constants';
+
+const tintColorLight = COLORS.light.success;
+const tintColorDark = COLORS.accent;
 
 export default {
   light: {
-    text: '#000',
-    background: '#fff',
+    text: COLORS.light.text,
+    background: COLORS.light.background,
     tint: tintColorLight,
-    tabIconDefault: '#ccc',
+    tabIconDefault: COLORS.light.textTertiary,
     tabIconSelected: tintColorLight,
+    surface: COLORS.light.surface,
+    border: COLORS.light.border,
+    textSecondary: COLORS.light.textSecondary,
   },
   dark: {
-    text: '#fff',
-    background: '#000',
+    text: COLORS.dark.text,
+    background: COLORS.dark.background,
     tint: tintColorDark,
-    tabIconDefault: '#ccc',
+    tabIconDefault: COLORS.dark.textTertiary,
     tabIconSelected: tintColorDark,
+    surface: COLORS.dark.surface,
+    border: COLORS.dark.border,
+    textSecondary: COLORS.dark.textSecondary,
   },
 };
