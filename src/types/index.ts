@@ -56,10 +56,12 @@ export interface GPSPoint {
 }
 
 export interface TimerState {
-  status: 'idle' | 'ready' | 'running' | 'completed';
+  status: 'idle' | 'ready' | 'armed' | 'running' | 'completed';
   startTime: number | null;
   currentSpeed: number; // m/s
   currentDistance: number; // meters
   elapsedTime: number; // ms
   milestones: Run['milestones'];
+  maxSpeed: number; // m/s
+  gpsPoints: GPSPoint[];
 }

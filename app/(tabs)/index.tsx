@@ -1,37 +1,118 @@
 import React from 'react';
-import { StyleSheet, View, Text } from 'react-native';
-import { Timer } from 'lucide-react-native';
-
-import { useColorScheme } from '@/components/useColorScheme';
-import Colors from '@/constants/Colors';
+import { StyleSheet, View, SafeAreaView, StatusBar } from 'react-native';
+import {
+  GPSStatus,
+  SpeedDisplay,
+  TimerDisplay,
+  MetricsGrid,
+  StartButton,
+  StatsFooter,
+} from '../../src/components/Timer';
+import { useRunTracker } from '../../src/hooks/useRunTracker';
+import { useSettingsStore } from '../../src/stores/settingsStore';
+import { COLORS } from '../../src/utils/constants';
 
 export default function TimerScreen() {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'dark'];
+  const {
+    status,
+    currentSpeed,
+    currentDistance,
+    elapsedTime,
+    milestones,
+    maxSpeed,
+    hasPermission,
+    isTracking,
+    accuracy,
+    isAccuracyOk,
+    latitude,
+    longitude,
+    handleButtonPress,
+  } = useRunTracker();
+
+  const { unitSystem, gpsAccuracy, hapticFeedback } = useSettingsStore();
+
+  const isRunning = status === 'running';
+  const isGpsReady = isTracking && isAccuracyOk;
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Timer color={colors.tint} size={64} />
-      <Text style={[styles.title, { color: colors.text }]}>Timer</Text>
-      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-        Acceleration timing coming soon
-      </Text>
-    </View>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" />
+
+      {/* GPS Status Header */}
+      <GPSStatus
+        hasPermission={hasPermission}
+        accuracy={accuracy}
+        isTracking={isTracking}
+        threshold={gpsAccuracy}
+        latitude={latitude}
+        longitude={longitude}
+      />
+
+      {/* Main Content */}
+      <View style={styles.content}>
+        {/* Timer Display */}
+        <View style={styles.timerSection}>
+          <TimerDisplay elapsedMs={elapsedTime} isRunning={isRunning} />
+        </View>
+
+        {/* Speed Display */}
+        <View style={styles.speedSection}>
+          <SpeedDisplay
+            speedMs={currentSpeed}
+            unitSystem={unitSystem}
+            isRunning={isRunning}
+          />
+        </View>
+
+        {/* Metrics Grid */}
+        <View style={styles.metricsSection}>
+          <MetricsGrid milestones={milestones} unitSystem={unitSystem} />
+        </View>
+
+        {/* Start Button */}
+        <View style={styles.buttonSection}>
+          <StartButton
+            status={status}
+            isGpsReady={isGpsReady}
+            hapticEnabled={hapticFeedback}
+            onPress={handleButtonPress}
+          />
+        </View>
+      </View>
+
+      {/* Stats Footer */}
+      <StatsFooter
+        maxSpeed={maxSpeed}
+        distance={currentDistance}
+        unitSystem={unitSystem}
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: COLORS.dark.background,
+  },
+  content: {
+    flex: 1,
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+  },
+  timerSection: {
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 16,
+    paddingTop: 16,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: '600',
+  speedSection: {
+    alignItems: 'center',
+    paddingVertical: 8,
   },
-  subtitle: {
-    fontSize: 16,
+  metricsSection: {
+    paddingVertical: 16,
+  },
+  buttonSection: {
+    alignItems: 'center',
+    paddingVertical: 24,
   },
 });
