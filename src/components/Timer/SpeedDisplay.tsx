@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, View, Text } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   withTiming,
+  useSharedValue,
+  useEffect,
 } from 'react-native-reanimated';
 import { COLORS, SPEED_THRESHOLDS } from '../../utils/constants';
 import type { UnitSystem } from '../../types';
@@ -13,31 +15,50 @@ interface SpeedDisplayProps {
   isRunning: boolean;
 }
 
+// Helper to get color based on speed - runs on JS thread
+function getSpeedColor(
+  speedMs: number,
+  unitSystem: UnitSystem,
+  isRunning: boolean
+): string {
+  if (!isRunning) return COLORS.dark.text;
+
+  const sixtyThreshold =
+    unitSystem === 'imperial'
+      ? SPEED_THRESHOLDS.SIXTY_MPH
+      : SPEED_THRESHOLDS.SIXTY_KPH;
+  const hundredThreshold =
+    unitSystem === 'imperial'
+      ? SPEED_THRESHOLDS.HUNDRED_MPH
+      : SPEED_THRESHOLDS.HUNDRED_KPH;
+
+  if (speedMs >= hundredThreshold) return COLORS.accent;
+  if (speedMs >= sixtyThreshold) return COLORS.accentDim;
+  return COLORS.dark.text;
+}
+
 export function SpeedDisplay({ speedMs, unitSystem, isRunning }: SpeedDisplayProps) {
   const displaySpeed = formatSpeed(speedMs, unitSystem, 1);
   const unit = getSpeedUnit(unitSystem);
 
-  // Determine color based on speed milestones
-  const getSpeedColor = () => {
-    if (!isRunning) return COLORS.dark.text;
+  // Compute color on JS thread
+  const targetColor = useMemo(
+    () => getSpeedColor(speedMs, unitSystem, isRunning),
+    [speedMs, unitSystem, isRunning]
+  );
 
-    const sixtyThreshold =
-      unitSystem === 'imperial'
-        ? SPEED_THRESHOLDS.SIXTY_MPH
-        : SPEED_THRESHOLDS.SIXTY_KPH;
-    const hundredThreshold =
-      unitSystem === 'imperial'
-        ? SPEED_THRESHOLDS.HUNDRED_MPH
-        : SPEED_THRESHOLDS.HUNDRED_KPH;
+  // Use shared value for animation
+  const colorShared = useSharedValue(targetColor);
 
-    if (speedMs >= hundredThreshold) return COLORS.accent;
-    if (speedMs >= sixtyThreshold) return COLORS.accentDim;
-    return COLORS.dark.text;
-  };
+  // Update shared value when target changes
+  React.useEffect(() => {
+    colorShared.value = targetColor;
+  }, [targetColor, colorShared]);
 
   const animatedTextStyle = useAnimatedStyle(() => {
+    'worklet';
     return {
-      color: withTiming(getSpeedColor(), { duration: 200 }),
+      color: withTiming(colorShared.value, { duration: 200 }),
     };
   });
 
