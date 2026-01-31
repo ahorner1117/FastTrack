@@ -15,12 +15,14 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.fasttrack.app",
+      "bundleIdentifier": "com.anthonyhorner.fasttrack",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "FastTrack uses your location to measure vehicle speed and distance for acceleration timing.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "FastTrack uses your location to measure vehicle speed and distance for acceleration timing.",
         "NSMotionUsageDescription": "FastTrack uses motion sensors to enhance speed measurement accuracy.",
-        "UIBackgroundModes": ["location"]
+        "UIBackgroundModes": [
+          "location"
+        ]
       }
     },
     "android": {
@@ -29,7 +31,7 @@
         "backgroundColor": "#000000"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.fasttrack.app"
+      "package": "com.anthonyhorner.fasttrack"
     },
     "web": {
       "bundler": "metro",
