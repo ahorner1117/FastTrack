@@ -7,6 +7,7 @@ import Animated, {
   withSequence,
   withTiming,
   useSharedValue,
+  cancelAnimation,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { COLORS } from '../../utils/constants';
@@ -44,7 +45,13 @@ export function StartButton({
     } else {
       pulseScale.value = withTiming(1);
     }
-  }, [status, pulseScale]);
+
+    // Cleanup: cancel animations on unmount to prevent memory leaks
+    return () => {
+      cancelAnimation(pulseScale);
+      cancelAnimation(scale);
+    };
+  }, [status, pulseScale, scale]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [

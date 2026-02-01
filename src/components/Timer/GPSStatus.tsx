@@ -7,6 +7,7 @@ import Animated, {
   withTiming,
   useSharedValue,
   withSequence,
+  cancelAnimation,
 } from 'react-native-reanimated';
 import { COLORS } from '../../utils/constants';
 import type { GPSAccuracy } from '../../types';
@@ -47,6 +48,11 @@ export function GPSStatus({
     } else {
       rotation.value = withTiming(0);
     }
+
+    // Cleanup: cancel animation on unmount to prevent memory leaks
+    return () => {
+      cancelAnimation(rotation);
+    };
   }, [isTracking, accuracy, rotation]);
 
   const animatedStyle = useAnimatedStyle(() => ({

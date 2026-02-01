@@ -7,6 +7,7 @@ import {
   MetricsGrid,
   StartButton,
   StatsFooter,
+  LocationMap,
 } from '../../src/components/Timer';
 import { useRunTracker } from '../../src/hooks/useRunTracker';
 import { useSettingsStore } from '../../src/stores/settingsStore';
@@ -64,6 +65,15 @@ export default function TimerScreen() {
           />
         </View>
 
+        {/* Location Map */}
+        <View style={styles.mapSection}>
+          <LocationMap
+            latitude={latitude}
+            longitude={longitude}
+            isTracking={isTracking}
+          />
+        </View>
+
         {/* Metrics Grid */}
         <View style={styles.metricsSection}>
           <MetricsGrid milestones={milestones} unitSystem={unitSystem} />
@@ -106,6 +116,9 @@ const styles = StyleSheet.create({
   },
   speedSection: {
     alignItems: 'center',
+    paddingVertical: 8,
+  },
+  mapSection: {
     paddingVertical: 8,
   },
   metricsSection: {

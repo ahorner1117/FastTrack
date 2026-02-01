@@ -249,17 +249,27 @@ export function useRunTracker() {
         break;
 
       case 'armed':
-        // Cancel armed state
+        // Cancel armed state - clear timer if it somehow started
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+        }
+        startPointRef.current = null;
+        lastPointRef.current = null;
+        totalDistanceRef.current = 0;
         reset();
         setStatus('ready');
         break;
 
       case 'running':
-        // Stop the timer
+        // Stop the timer and clean up refs
         if (timerRef.current) {
           clearInterval(timerRef.current);
           timerRef.current = null;
         }
+        startPointRef.current = null;
+        lastPointRef.current = null;
+        totalDistanceRef.current = 0;
         stop();
         if (hapticFeedback && Haptics) {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);

@@ -1,6 +1,10 @@
 import { create } from 'zustand';
 import type { TimerState, GPSPoint, RunMilestone } from '../types';
 
+// Maximum GPS points to store (at 10Hz, 6000 = 10 minutes of data)
+// This prevents memory issues on long runs
+const MAX_GPS_POINTS = 6000;
+
 interface RunStoreState extends TimerState {
   // Actions
   setStatus: (status: TimerState['status']) => void;
@@ -50,9 +54,14 @@ export const useRunStore = create<RunStoreState>()((set, get) => ({
   setMaxSpeed: (maxSpeed) => set({ maxSpeed }),
 
   addGpsPoint: (point) =>
-    set((state) => ({
-      gpsPoints: [...state.gpsPoints, point],
-    })),
+    set((state) => {
+      const newPoints = [...state.gpsPoints, point];
+      // Keep only the most recent points to prevent memory issues
+      if (newPoints.length > MAX_GPS_POINTS) {
+        return { gpsPoints: newPoints.slice(-MAX_GPS_POINTS) };
+      }
+      return { gpsPoints: newPoints };
+    }),
 
   setMilestone: (key, milestone) =>
     set((state) => ({

@@ -4,7 +4,6 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
   useSharedValue,
-  useEffect,
 } from 'react-native-reanimated';
 import { COLORS, SPEED_THRESHOLDS } from '../../utils/constants';
 import type { UnitSystem } from '../../types';
