@@ -88,26 +88,20 @@ export function StartButton({
           disabled: true,
         };
       case 'ready':
-        if (!isGpsReady) {
-          return {
-            text: 'Waiting for GPS',
-            backgroundColor: COLORS.dark.surface,
-            textColor: COLORS.dark.textSecondary,
-            disabled: true,
-          };
-        }
+        // Brief transition state - auto-arms when GPS is ready
         return {
-          text: 'START',
-          backgroundColor: COLORS.accent,
-          textColor: '#000000',
-          disabled: false,
+          text: 'Preparing...',
+          backgroundColor: COLORS.dark.surface,
+          textColor: COLORS.dark.textSecondary,
+          disabled: true,
         };
       case 'armed':
+        // Ready for automatic launch detection
         return {
-          text: 'GO!',
-          backgroundColor: COLORS.accentDim,
+          text: 'READY',
+          backgroundColor: COLORS.accent,
           textColor: '#000000',
-          disabled: false,
+          disabled: false, // Can press to cancel
         };
       case 'running':
         return {
@@ -125,7 +119,7 @@ export function StartButton({
         };
       default:
         return {
-          text: 'START',
+          text: 'READY',
           backgroundColor: COLORS.accent,
           textColor: '#000000',
           disabled: false,

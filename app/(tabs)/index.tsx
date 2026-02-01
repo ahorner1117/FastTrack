@@ -2,6 +2,7 @@ import React from 'react';
 import { SafeAreaView, ScrollView, StatusBar, StyleSheet, View } from 'react-native';
 import {
   GPSStatus,
+  LaunchStatus,
   LocationMap,
   MetricsGrid,
   SpeedDisplay,
@@ -28,6 +29,8 @@ export default function TimerScreen() {
     isAccuracyOk,
     latitude,
     longitude,
+    isAccelerometerAvailable,
+    currentAcceleration,
     handleButtonPress,
   } = useRunTracker();
 
@@ -78,6 +81,11 @@ export default function TimerScreen() {
             isGpsReady={isGpsReady}
             hapticEnabled={hapticFeedback}
             onPress={handleButtonPress}
+          />
+          <LaunchStatus
+            status={status}
+            currentAcceleration={currentAcceleration}
+            isAccelerometerAvailable={isAccelerometerAvailable}
           />
         </View>
 

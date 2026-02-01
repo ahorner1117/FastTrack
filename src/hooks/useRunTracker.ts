@@ -6,6 +6,7 @@ import { useRunStore } from '../stores/runStore';
 const Haptics = Platform.OS !== 'web' ? require('expo-haptics') : null;
 import { useSettingsStore } from '../stores/settingsStore';
 import { useLocation } from './useLocation';
+import { useAccelerometer } from './useAccelerometer';
 import { useHistoryStore } from '../stores/historyStore';
 import { calculateDistance } from '../services/locationService';
 import {
@@ -15,8 +16,10 @@ import {
 } from '../utils/constants';
 import type { GPSPoint, Run, RunMilestone } from '../types';
 
-// Motion detection threshold (approx 2 mph in m/s)
-const MOTION_START_THRESHOLD = 0.894;
+// Launch detection threshold in G-force
+// 0.3G is approximately the acceleration of a moderately quick car launch
+// This triggers within ~30ms of sustained acceleration at 100Hz sampling
+const LAUNCH_THRESHOLD_G = 0.3;
 
 export function useRunTracker() {
   const {
@@ -59,6 +62,57 @@ export function useRunTracker() {
   const lastPointRef = useRef<{ lat: number; lon: number } | null>(null);
   const totalDistanceRef = useRef(0);
 
+  // Launch detection callback - called by accelerometer when launch is detected
+  const handleLaunchDetected = useCallback(() => {
+    const currentStatus = useRunStore.getState().status;
+    if (currentStatus !== 'armed') return;
+
+    const location = currentLocation;
+    if (!location) return;
+
+    // Record start point
+    startPointRef.current = {
+      lat: location.latitude,
+      lon: location.longitude,
+    };
+    lastPointRef.current = {
+      lat: location.latitude,
+      lon: location.longitude,
+    };
+    totalDistanceRef.current = 0;
+
+    const speed = Math.max(0, location.speed ?? 0);
+    const gpsPoint: GPSPoint = {
+      latitude: location.latitude,
+      longitude: location.longitude,
+      speed,
+      accuracy: location.accuracy ?? 999,
+      timestamp: location.timestamp,
+    };
+
+    start();
+    addGpsPoint(gpsPoint);
+
+    if (hapticFeedback && Haptics) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    }
+
+    // Start elapsed time timer
+    timerRef.current = setInterval(() => {
+      const { startTime } = useRunStore.getState();
+      if (startTime) {
+        setElapsedTime(Date.now() - startTime);
+      }
+    }, TIMER_UPDATE_INTERVAL_MS);
+  }, [currentLocation, hapticFeedback, start, addGpsPoint, setElapsedTime]);
+
+  // Accelerometer for launch detection - only active when armed
+  const { isAvailable: isAccelerometerAvailable, isMonitoring: isAccelerometerMonitoring, currentAcceleration } = useAccelerometer({
+    enabled: status === 'armed',
+    launchThresholdG: LAUNCH_THRESHOLD_G,
+    onLaunchDetected: handleLaunchDetected,
+  });
+
   // Start GPS tracking on mount
   useEffect(() => {
     startTracking();
@@ -70,61 +124,39 @@ export function useRunTracker() {
     };
   }, [startTracking, stopTracking]);
 
-  // Update status based on GPS readiness
+  // Auto-arm when GPS is ready (no manual START required)
   useEffect(() => {
     if (status === 'idle' && isTracking && isAccuracyOk) {
       setStatus('ready');
     } else if (status === 'ready' && (!isTracking || !isAccuracyOk)) {
       setStatus('idle');
     }
-  }, [status, isTracking, isAccuracyOk, setStatus]);
+    // Auto-transition from ready to armed when GPS is good
+    if (status === 'ready' && isTracking && isAccuracyOk) {
+      arm();
+      if (hapticFeedback && Haptics) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+    }
+  }, [status, isTracking, isAccuracyOk, setStatus, arm, hapticFeedback]);
 
-  // Process GPS updates during armed/running states
+  // Process GPS updates during running state (launch detection handled by accelerometer)
   useEffect(() => {
     if (!currentLocation) return;
 
     const speed = Math.max(0, currentLocation.speed ?? 0);
     setSpeed(speed);
 
-    // Record GPS point
-    const gpsPoint: GPSPoint = {
-      latitude: currentLocation.latitude,
-      longitude: currentLocation.longitude,
-      speed,
-      accuracy: currentLocation.accuracy ?? 999,
-      timestamp: currentLocation.timestamp,
-    };
+    // Only process detailed GPS tracking when running
+    if (status === 'running') {
+      const gpsPoint: GPSPoint = {
+        latitude: currentLocation.latitude,
+        longitude: currentLocation.longitude,
+        speed,
+        accuracy: currentLocation.accuracy ?? 999,
+        timestamp: currentLocation.timestamp,
+      };
 
-    if (status === 'armed') {
-      // Detect motion start
-      if (speed >= MOTION_START_THRESHOLD) {
-        // Record start point
-        startPointRef.current = {
-          lat: currentLocation.latitude,
-          lon: currentLocation.longitude,
-        };
-        lastPointRef.current = {
-          lat: currentLocation.latitude,
-          lon: currentLocation.longitude,
-        };
-        totalDistanceRef.current = 0;
-
-        start();
-        addGpsPoint(gpsPoint);
-
-        if (hapticFeedback && Haptics) {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        }
-
-        // Start elapsed time timer
-        timerRef.current = setInterval(() => {
-          const { startTime } = useRunStore.getState();
-          if (startTime) {
-            setElapsedTime(Date.now() - startTime);
-          }
-        }, TIMER_UPDATE_INTERVAL_MS);
-      }
-    } else if (status === 'running') {
       addGpsPoint(gpsPoint);
 
       // Calculate distance from last point
@@ -148,7 +180,7 @@ export function useRunTracker() {
       checkSpeedMilestones(speed, totalDistanceRef.current);
       checkDistanceMilestones(speed, totalDistanceRef.current);
     }
-  }, [currentLocation, status, hapticFeedback]);
+  }, [currentLocation, status]);
 
   const checkSpeedMilestones = useCallback(
     (speed: number, distance: number) => {
@@ -244,15 +276,8 @@ export function useRunTracker() {
 
   const handleButtonPress = useCallback(() => {
     switch (status) {
-      case 'ready':
-        arm();
-        if (hapticFeedback && Haptics) {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        }
-        break;
-
       case 'armed':
-        // Cancel armed state - clear timer if it somehow started
+        // Cancel armed state and stop listening for launch
         if (timerRef.current) {
           clearInterval(timerRef.current);
           timerRef.current = null;
@@ -261,7 +286,11 @@ export function useRunTracker() {
         lastPointRef.current = null;
         totalDistanceRef.current = 0;
         reset();
-        setStatus('ready');
+        // Go back to idle, will auto-arm again when GPS is ready
+        setStatus('idle');
+        if (hapticFeedback && Haptics) {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }
         break;
 
       case 'running':
@@ -329,6 +358,11 @@ export function useRunTracker() {
     isAccuracyOk,
     latitude: currentLocation?.latitude ?? null,
     longitude: currentLocation?.longitude ?? null,
+
+    // Accelerometer
+    isAccelerometerAvailable,
+    isAccelerometerMonitoring,
+    currentAcceleration,
 
     // Actions
     handleButtonPress,

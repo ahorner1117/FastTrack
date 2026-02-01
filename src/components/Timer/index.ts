@@ -5,3 +5,4 @@ export { MetricsGrid } from './MetricsGrid';
 export { StartButton } from './StartButton';
 export { StatsFooter } from './StatsFooter';
 export { LocationMap } from './LocationMap';
+export { LaunchStatus } from './LaunchStatus';
