@@ -1,15 +1,16 @@
 import React from 'react';
-import { StyleSheet, View, SafeAreaView, StatusBar } from 'react-native';
+import { SafeAreaView, ScrollView, StatusBar, StyleSheet, View } from 'react-native';
 import {
   GPSStatus,
-  SpeedDisplay,
-  TimerDisplay,
+  LocationMap,
   MetricsGrid,
+  SpeedDisplay,
   StartButton,
   StatsFooter,
-  LocationMap,
+  TimerDisplay,
 } from '../../src/components/Timer';
 import { useRunTracker } from '../../src/hooks/useRunTracker';
+import { useRunStore } from '../../src/stores/runStore';
 import { useSettingsStore } from '../../src/stores/settingsStore';
 import { COLORS } from '../../src/utils/constants';
 
@@ -31,6 +32,7 @@ export default function TimerScreen() {
   } = useRunTracker();
 
   const { unitSystem, gpsAccuracy, hapticFeedback } = useSettingsStore();
+  const gpsPoints = useRunStore((state) => state.gpsPoints);
 
   const isRunning = status === 'running';
   const isGpsReady = isTracking && isAccuracyOk;
@@ -49,8 +51,12 @@ export default function TimerScreen() {
         longitude={longitude}
       />
 
-      {/* Main Content */}
-      <View style={styles.content}>
+      {/* Main Content - Scrollable */}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Timer Display */}
         <View style={styles.timerSection}>
           <TimerDisplay elapsedMs={elapsedTime} isRunning={isRunning} />
@@ -65,20 +71,6 @@ export default function TimerScreen() {
           />
         </View>
 
-        {/* Location Map */}
-        <View style={styles.mapSection}>
-          <LocationMap
-            latitude={latitude}
-            longitude={longitude}
-            isTracking={isTracking}
-          />
-        </View>
-
-        {/* Metrics Grid */}
-        <View style={styles.metricsSection}>
-          <MetricsGrid milestones={milestones} unitSystem={unitSystem} />
-        </View>
-
         {/* Start Button */}
         <View style={styles.buttonSection}>
           <StartButton
@@ -88,14 +80,32 @@ export default function TimerScreen() {
             onPress={handleButtonPress}
           />
         </View>
-      </View>
 
-      {/* Stats Footer */}
-      <StatsFooter
-        maxSpeed={maxSpeed}
-        distance={currentDistance}
-        unitSystem={unitSystem}
-      />
+        {/* Location Map */}
+        <View style={styles.mapSection}>
+          <LocationMap
+            latitude={latitude}
+            longitude={longitude}
+            isTracking={isTracking}
+            gpsPoints={gpsPoints}
+            showRoute={status === 'running' || status === 'completed'}
+          />
+        </View>
+
+        {/* Metrics Grid */}
+        <View style={styles.metricsSection}>
+          <MetricsGrid milestones={milestones} unitSystem={unitSystem} />
+        </View>
+
+
+
+        {/* Stats Footer */}
+        <StatsFooter
+          maxSpeed={maxSpeed}
+          distance={currentDistance}
+          unitSystem={unitSystem}
+        />
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -105,10 +115,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.dark.background,
   },
-  content: {
+  scrollView: {
     flex: 1,
-    justifyContent: 'space-between',
+  },
+  scrollContent: {
     paddingVertical: 16,
+    paddingBottom: 32,
   },
   timerSection: {
     alignItems: 'center',

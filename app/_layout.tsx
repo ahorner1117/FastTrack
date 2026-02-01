@@ -76,6 +76,36 @@ function RootLayoutNav() {
     >
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="history/[id]"
+          options={{
+            headerShown: true,
+            headerBackTitle: 'History',
+          }}
+        />
+        <Stack.Screen
+          name="vehicles/add"
+          options={{
+            headerShown: true,
+            title: 'Add Vehicle',
+            presentation: 'modal',
+          }}
+        />
+        <Stack.Screen
+          name="vehicles/[id]"
+          options={{
+            headerShown: true,
+            headerBackTitle: 'Garage',
+          }}
+        />
+        <Stack.Screen
+          name="vehicles/edit/[id]"
+          options={{
+            headerShown: true,
+            title: 'Edit Vehicle',
+            presentation: 'modal',
+          }}
+        />
       </Stack>
     </ThemeProvider>
   );

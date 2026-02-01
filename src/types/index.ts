@@ -13,13 +13,28 @@ export interface Settings {
   defaultVehicleId: string | null;
 }
 
+export type VehicleUpgrade =
+  | 'exhaust'
+  | 'tune'
+  | 'downpipes'
+  | 'cold_air_intake'
+  | 'intercooler'
+  | 'turbo_supercharger'
+  | 'headers'
+  | 'suspension'
+  | 'wheels_tires'
+  | 'weight_reduction'
+  | 'nitrous'
+  | 'fuel_system';
+
 export interface Vehicle {
   id: string;
   name: string;
-  year?: number;
-  make?: string;
-  model?: string;
+  year: number;
+  make: string;
+  model: string;
   photoUri?: string;
+  upgrades: VehicleUpgrade[];
   notes?: string;
   createdAt: number;
   updatedAt: number;

@@ -65,3 +65,19 @@ export const STORAGE_KEYS = {
   VEHICLES: '@fasttrack/vehicles',
   RUNS: '@fasttrack/runs',
 } as const;
+
+// Vehicle upgrades
+export const VEHICLE_UPGRADES = [
+  { value: 'exhaust', label: 'Exhaust' },
+  { value: 'tune', label: 'Tune' },
+  { value: 'downpipes', label: 'Downpipes' },
+  { value: 'cold_air_intake', label: 'Cold Air Intake' },
+  { value: 'intercooler', label: 'Intercooler' },
+  { value: 'turbo_supercharger', label: 'Turbo/Supercharger' },
+  { value: 'headers', label: 'Headers' },
+  { value: 'suspension', label: 'Suspension' },
+  { value: 'wheels_tires', label: 'Wheels/Tires' },
+  { value: 'weight_reduction', label: 'Weight Reduction' },
+  { value: 'nitrous', label: 'Nitrous' },
+  { value: 'fuel_system', label: 'Fuel System' },
+] as const;

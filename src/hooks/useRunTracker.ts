@@ -6,13 +6,14 @@ import { useRunStore } from '../stores/runStore';
 const Haptics = Platform.OS !== 'web' ? require('expo-haptics') : null;
 import { useSettingsStore } from '../stores/settingsStore';
 import { useLocation } from './useLocation';
+import { useHistoryStore } from '../stores/historyStore';
 import { calculateDistance } from '../services/locationService';
 import {
   SPEED_THRESHOLDS,
   DISTANCE_THRESHOLDS,
   TIMER_UPDATE_INTERVAL_MS,
 } from '../utils/constants';
-import type { GPSPoint, RunMilestone } from '../types';
+import type { GPSPoint, Run, RunMilestone } from '../types';
 
 // Motion detection threshold (approx 2 mph in m/s)
 const MOTION_START_THRESHOLD = 0.894;
@@ -39,7 +40,9 @@ export function useRunTracker() {
     reset,
   } = useRunStore();
 
-  const { gpsAccuracy, hapticFeedback, unitSystem } = useSettingsStore();
+  const { gpsAccuracy, hapticFeedback, unitSystem, autoSaveRuns } =
+    useSettingsStore();
+  const addRun = useHistoryStore((state) => state.addRun);
 
   const {
     hasPermission,
@@ -267,6 +270,25 @@ export function useRunTracker() {
           clearInterval(timerRef.current);
           timerRef.current = null;
         }
+
+        // Save run to history if auto-save is enabled
+        if (autoSaveRuns) {
+          const state = useRunStore.getState();
+          if (state.startTime && state.gpsPoints.length > 0) {
+            const completedRun: Run = {
+              id: `run_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              vehicleId: null,
+              startTime: state.startTime,
+              endTime: Date.now(),
+              milestones: state.milestones,
+              maxSpeed: state.maxSpeed,
+              gpsPoints: state.gpsPoints,
+              createdAt: Date.now(),
+            };
+            addRun(completedRun);
+          }
+        }
+
         startPointRef.current = null;
         lastPointRef.current = null;
         totalDistanceRef.current = 0;
@@ -289,7 +311,7 @@ export function useRunTracker() {
         }
         break;
     }
-  }, [status, hapticFeedback, arm, stop, reset, setStatus, isAccuracyOk]);
+  }, [status, hapticFeedback, autoSaveRuns, addRun, arm, stop, reset, setStatus, isAccuracyOk]);
 
   return {
     // State
