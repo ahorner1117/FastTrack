@@ -11,6 +11,8 @@ interface SettingsState extends Settings {
   setHapticFeedback: (enabled: boolean) => void;
   setAutoSaveRuns: (enabled: boolean) => void;
   setDefaultVehicleId: (vehicleId: string | null) => void;
+  setLaunchDetectionThresholdG: (threshold: number) => void;
+  setLaunchDetectionSampleCount: (count: number) => void;
   resetToDefaults: () => void;
 }
 
@@ -21,6 +23,8 @@ const defaultSettings: Settings = {
   hapticFeedback: true,
   autoSaveRuns: true,
   defaultVehicleId: null,
+  launchDetectionThresholdG: 0.5,
+  launchDetectionSampleCount: 4,
 };
 
 export const useSettingsStore = create<SettingsState>()(
@@ -39,6 +43,12 @@ export const useSettingsStore = create<SettingsState>()(
       setAutoSaveRuns: (autoSaveRuns) => set({ autoSaveRuns }),
 
       setDefaultVehicleId: (defaultVehicleId) => set({ defaultVehicleId }),
+
+      setLaunchDetectionThresholdG: (launchDetectionThresholdG) =>
+        set({ launchDetectionThresholdG }),
+
+      setLaunchDetectionSampleCount: (launchDetectionSampleCount) =>
+        set({ launchDetectionSampleCount }),
 
       resetToDefaults: () => set(defaultSettings),
     }),

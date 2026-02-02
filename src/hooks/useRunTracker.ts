@@ -16,10 +16,6 @@ import {
 } from '../utils/constants';
 import type { GPSPoint, Run, RunMilestone } from '../types';
 
-// Launch detection threshold in G-force
-// 0.15G is sensitive enough to catch quick starts but won't false trigger
-// Combined with baseline calibration, this triggers within ~10ms of acceleration
-const LAUNCH_THRESHOLD_G = 0.15;
 
 export function useRunTracker() {
   const {
@@ -43,8 +39,14 @@ export function useRunTracker() {
     reset,
   } = useRunStore();
 
-  const { gpsAccuracy, hapticFeedback, unitSystem, autoSaveRuns } =
-    useSettingsStore();
+  const {
+    gpsAccuracy,
+    hapticFeedback,
+    unitSystem,
+    autoSaveRuns,
+    launchDetectionThresholdG,
+    launchDetectionSampleCount,
+  } = useSettingsStore();
   const addRun = useHistoryStore((state) => state.addRun);
 
   const {
@@ -109,7 +111,8 @@ export function useRunTracker() {
   // Accelerometer for launch detection - only active when armed
   const { isAvailable: isAccelerometerAvailable, isMonitoring: isAccelerometerMonitoring, currentAcceleration } = useAccelerometer({
     enabled: status === 'armed',
-    launchThresholdG: LAUNCH_THRESHOLD_G,
+    launchThresholdG: launchDetectionThresholdG,
+    consecutiveSamplesRequired: launchDetectionSampleCount,
     onLaunchDetected: handleLaunchDetected,
   });
 
@@ -313,6 +316,10 @@ export function useRunTracker() {
               maxSpeed: state.maxSpeed,
               gpsPoints: state.gpsPoints,
               createdAt: Date.now(),
+              launchDetectionConfig: {
+                thresholdG: launchDetectionThresholdG,
+                sampleCount: launchDetectionSampleCount,
+              },
             };
             addRun(completedRun);
           }
@@ -340,7 +347,7 @@ export function useRunTracker() {
         }
         break;
     }
-  }, [status, hapticFeedback, autoSaveRuns, addRun, arm, stop, reset, setStatus, isAccuracyOk]);
+  }, [status, hapticFeedback, autoSaveRuns, addRun, arm, stop, reset, setStatus, isAccuracyOk, launchDetectionThresholdG, launchDetectionSampleCount]);
 
   return {
     // State

@@ -11,6 +11,13 @@ export interface Settings {
   hapticFeedback: boolean;
   autoSaveRuns: boolean;
   defaultVehicleId: string | null;
+  launchDetectionThresholdG: number;
+  launchDetectionSampleCount: number;
+}
+
+export interface LaunchDetectionConfig {
+  thresholdG: number;
+  sampleCount: number;
 }
 
 export type VehicleUpgrade =
@@ -60,6 +67,7 @@ export interface Run {
   maxSpeed: number; // m/s
   gpsPoints: GPSPoint[];
   createdAt: number;
+  launchDetectionConfig?: LaunchDetectionConfig;
 }
 
 export interface GPSPoint {

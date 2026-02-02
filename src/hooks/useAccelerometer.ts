@@ -1,19 +1,18 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
-import { Platform } from 'react-native';
 import { Accelerometer, AccelerometerMeasurement } from 'expo-sensors';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 
 // Accelerometer update interval in ms (10ms = 100Hz for fast detection)
 const ACCELEROMETER_INTERVAL_MS = 10;
 
-// Launch detection threshold in G-force (1G = 9.81 m/s²)
-// 0.15G is sensitive enough to catch quick starts but won't trigger from hand movement
+// Default launch detection threshold in G-force (1G = 9.81 m/s²)
+// 0.25G is sensitive enough to catch quick starts but won't trigger from hand movement
 // A typical brisk car acceleration is 0.2-0.5G
-const LAUNCH_THRESHOLD_G = 0.15;
+const DEFAULT_LAUNCH_THRESHOLD_G = 0.25;
 
-// Number of consecutive samples above threshold to confirm launch
-// At 100Hz, 1 sample = 10ms (immediate detection)
-// Using 1 for fastest response - threshold is high enough to avoid false triggers
-const CONSECUTIVE_SAMPLES_REQUIRED = 1;
+// Default number of consecutive samples above threshold to confirm launch
+// At 100Hz, 2 samples = 20ms - filters brief impulses while still being responsive
+const DEFAULT_CONSECUTIVE_SAMPLES_REQUIRED = 2;
 
 // Gravity constant
 const GRAVITY = 9.81;
@@ -24,6 +23,7 @@ const UI_UPDATE_INTERVAL_MS = 100;
 interface UseAccelerometerOptions {
   enabled: boolean;
   launchThresholdG?: number;
+  consecutiveSamplesRequired?: number;
   onLaunchDetected: () => void;
 }
 
@@ -36,7 +36,8 @@ interface AccelerometerState {
 
 export function useAccelerometer({
   enabled,
-  launchThresholdG = LAUNCH_THRESHOLD_G,
+  launchThresholdG = DEFAULT_LAUNCH_THRESHOLD_G,
+  consecutiveSamplesRequired = DEFAULT_CONSECUTIVE_SAMPLES_REQUIRED,
   onLaunchDetected,
 }: UseAccelerometerOptions): AccelerometerState {
   const [isAvailable, setIsAvailable] = useState(false);
@@ -132,7 +133,7 @@ export function useAccelerometer({
         if (accelerationMagnitude >= launchThresholdG) {
           consecutiveCountRef.current++;
 
-          if (consecutiveCountRef.current >= CONSECUTIVE_SAMPLES_REQUIRED) {
+          if (consecutiveCountRef.current >= consecutiveSamplesRequired) {
             launchDetectedRef.current = true;
             // Update UI immediately on launch
             setCurrentAcceleration(accelerationMagnitude);
@@ -154,7 +155,7 @@ export function useAccelerometer({
       }
       setIsMonitoring(false);
     };
-  }, [isAvailable, enabled, launchThresholdG, resetLaunchDetection]);
+  }, [isAvailable, enabled, launchThresholdG, consecutiveSamplesRequired, resetLaunchDetection]);
 
   return {
     isAvailable,

@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
-import { ChevronRight, Gauge, Timer } from 'lucide-react-native';
+import { ChevronRight, Gauge, Timer, Activity } from 'lucide-react-native';
 import type { Run, UnitSystem } from '../../types';
 import { COLORS } from '../../utils/constants';
 import {
@@ -77,6 +77,16 @@ export function RunCard({ run, unitSystem, onPress }: RunCardProps) {
               {formatSpeed(run.maxSpeed, unitSystem)}
             </Text>
           </View>
+
+          {run.launchDetectionConfig && (
+            <View style={styles.stat}>
+              <Activity color={COLORS.dark.textTertiary} size={16} />
+              <Text style={styles.statLabel}>Launch</Text>
+              <Text style={styles.statValue}>
+                {run.launchDetectionConfig.thresholdG}G
+              </Text>
+            </View>
+          )}
         </View>
       </View>
 

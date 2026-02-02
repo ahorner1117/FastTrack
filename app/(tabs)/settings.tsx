@@ -29,18 +29,34 @@ const GPS_ACCURACY_OPTIONS: { value: GPSAccuracy; label: string; description: st
   { value: 'low', label: 'Low', description: '20m accuracy required' },
 ];
 
+const LAUNCH_THRESHOLD_OPTIONS: { value: string; label: string; description: string }[] = [
+  { value: '0.1', label: '0.1G', description: 'Very sensitive - may trigger from phone movement' },
+  { value: '0.2', label: '0.2G', description: 'Sensitive - catches gentle starts' },
+  { value: '0.3', label: '0.3G', description: 'Balanced - recommended for most uses' },
+  { value: '0.4', label: '0.4G', description: 'Moderate - requires firmer acceleration' },
+  { value: '0.5', label: '0.5G', description: 'Less sensitive - for sporty launches' },
+];
+
+const LAUNCH_SAMPLE_OPTIONS: { value: string; label: string; description: string }[] = [
+  { value: '1', label: '1 sample', description: 'Instant detection (10ms)' },
+  { value: '2', label: '2 samples', description: 'Quick detection (20ms) - filters brief bumps' },
+  { value: '3', label: '3 samples', description: 'Stable detection (30ms) - filters hand movement' },
+  { value: '4', label: '4 samples', description: 'Very stable (40ms) - most resistant to false triggers' },
+];
+
 interface SettingRowProps {
   label: string;
   description?: string;
   children: React.ReactNode;
   isDark: boolean;
+  zIndex?: number;
 }
 
-function SettingRow({ label, description, children, isDark }: SettingRowProps) {
+function SettingRow({ label, description, children, isDark, zIndex }: SettingRowProps) {
   const colors = Colors[isDark ? 'dark' : 'light'];
 
   return (
-    <View style={styles.settingRow}>
+    <View style={[styles.settingRow, zIndex !== undefined && { zIndex }]}>
       <View style={styles.settingLabelContainer}>
         <Text style={[styles.settingLabel, { color: colors.text }]}>
           {label}
@@ -112,15 +128,16 @@ interface DropdownProps {
   selectedValue: string;
   onSelect: (value: string) => void;
   isDark: boolean;
+  zIndex?: number;
 }
 
-function Dropdown({ options, selectedValue, onSelect, isDark }: DropdownProps) {
+function Dropdown({ options, selectedValue, onSelect, isDark, zIndex = 1 }: DropdownProps) {
   const [isOpen, setIsOpen] = React.useState(false);
   const colors = Colors[isDark ? 'dark' : 'light'];
   const selectedOption = options.find((o) => o.value === selectedValue);
 
   return (
-    <View style={styles.dropdownContainer}>
+    <View style={[styles.dropdownContainer, { zIndex: isOpen ? 1000 : zIndex }]}>
       <TouchableOpacity
         style={[
           styles.dropdownButton,
@@ -204,11 +221,15 @@ export default function SettingsScreen() {
     gpsAccuracy,
     hapticFeedback,
     autoSaveRuns,
+    launchDetectionThresholdG,
+    launchDetectionSampleCount,
     setUnitSystem,
     setAppearance,
     setGpsAccuracy,
     setHapticFeedback,
     setAutoSaveRuns,
+    setLaunchDetectionThresholdG,
+    setLaunchDetectionSampleCount,
   } = useSettingsStore();
 
   return (
@@ -261,6 +282,43 @@ export default function SettingsScreen() {
             selectedValue={gpsAccuracy}
             onSelect={(value) => setGpsAccuracy(value as GPSAccuracy)}
             isDark={isDark}
+          />
+        </SettingRow>
+      </Card>
+
+      <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+        LAUNCH DETECTION
+      </Text>
+      <Card isDark={isDark}>
+        <SettingRow
+          label="Threshold"
+          description="Acceleration force required to start timing"
+          isDark={isDark}
+          zIndex={2}
+        >
+          <Dropdown
+            options={LAUNCH_THRESHOLD_OPTIONS}
+            selectedValue={launchDetectionThresholdG.toString()}
+            onSelect={(value) => setLaunchDetectionThresholdG(parseFloat(value))}
+            isDark={isDark}
+            zIndex={2}
+          />
+        </SettingRow>
+
+        <View style={[styles.divider, { backgroundColor: colors.border, zIndex: 1 }]} />
+
+        <SettingRow
+          label="Sample Count"
+          description="Consecutive readings required to confirm launch"
+          isDark={isDark}
+          zIndex={1}
+        >
+          <Dropdown
+            options={LAUNCH_SAMPLE_OPTIONS}
+            selectedValue={launchDetectionSampleCount.toString()}
+            onSelect={(value) => setLaunchDetectionSampleCount(parseInt(value, 10))}
+            isDark={isDark}
+            zIndex={1}
           />
         </SettingRow>
       </Card>
@@ -358,7 +416,6 @@ const styles = StyleSheet.create({
   },
   dropdownContainer: {
     position: 'relative',
-    zIndex: 1000,
   },
   dropdownButton: {
     flexDirection: 'row',
