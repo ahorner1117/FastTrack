@@ -6,16 +6,20 @@ import { Accelerometer, AccelerometerMeasurement } from 'expo-sensors';
 const ACCELEROMETER_INTERVAL_MS = 10;
 
 // Launch detection threshold in G-force (1G = 9.81 m/s²)
-// 0.3G is approximately the acceleration of a typical car launch
-// This can be adjusted based on user preference
-const LAUNCH_THRESHOLD_G = 0.3;
+// 0.15G is sensitive enough to catch quick starts but won't trigger from hand movement
+// A typical brisk car acceleration is 0.2-0.5G
+const LAUNCH_THRESHOLD_G = 0.15;
 
 // Number of consecutive samples above threshold to confirm launch
-// At 100Hz, 3 samples = 30ms of sustained acceleration
-const CONSECUTIVE_SAMPLES_REQUIRED = 3;
+// At 100Hz, 1 sample = 10ms (immediate detection)
+// Using 1 for fastest response - threshold is high enough to avoid false triggers
+const CONSECUTIVE_SAMPLES_REQUIRED = 1;
 
 // Gravity constant
 const GRAVITY = 9.81;
+
+// UI update throttle (don't update React state on every sample)
+const UI_UPDATE_INTERVAL_MS = 100;
 
 interface UseAccelerometerOptions {
   enabled: boolean;
@@ -44,6 +48,9 @@ export function useAccelerometer({
   const consecutiveCountRef = useRef(0);
   const launchDetectedRef = useRef(false);
   const onLaunchDetectedRef = useRef(onLaunchDetected);
+  const lastUIUpdateRef = useRef(0);
+  const baselineRef = useRef<{ x: number; y: number; z: number } | null>(null);
+  const calibrationSamplesRef = useRef<Array<{ x: number; y: number; z: number }>>([]);
 
   // Keep callback ref updated
   useEffect(() => {
@@ -64,6 +71,8 @@ export function useAccelerometer({
   const resetLaunchDetection = useCallback(() => {
     consecutiveCountRef.current = 0;
     launchDetectedRef.current = false;
+    baselineRef.current = null;
+    calibrationSamplesRef.current = [];
   }, []);
 
   // Start/stop monitoring based on enabled state
@@ -83,28 +92,50 @@ export function useAccelerometer({
 
     // Subscribe to accelerometer data
     subscriptionRef.current = Accelerometer.addListener((data) => {
-      setRawData(data);
+      const now = Date.now();
 
-      // Calculate forward acceleration (assuming phone is mounted with Y pointing forward)
-      // The accelerometer measures acceleration including gravity
-      // When stationary, Y ≈ 0, X ≈ 0, Z ≈ -1G (gravity)
-      // When accelerating forward, Y increases
-      //
-      // Note: This assumes the phone is mounted in portrait orientation
-      // with the screen facing the driver. Adjust axes if needed.
-      //
-      // We use the Y-axis as forward acceleration, excluding gravity effect
-      // The raw Y value represents forward/backward acceleration directly
-      const forwardAccelG = Math.abs(data.y);
-      setCurrentAcceleration(forwardAccelG);
+      // Calibration phase: collect baseline samples when stationary
+      // This captures the phone's orientation and gravity vector
+      if (!baselineRef.current) {
+        calibrationSamplesRef.current.push({ x: data.x, y: data.y, z: data.z });
 
-      // Launch detection logic
+        // Collect 10 samples (100ms) for calibration
+        if (calibrationSamplesRef.current.length >= 10) {
+          const samples = calibrationSamplesRef.current;
+          baselineRef.current = {
+            x: samples.reduce((sum, s) => sum + s.x, 0) / samples.length,
+            y: samples.reduce((sum, s) => sum + s.y, 0) / samples.length,
+            z: samples.reduce((sum, s) => sum + s.z, 0) / samples.length,
+          };
+        }
+        return;
+      }
+
+      // Calculate acceleration delta from baseline (removes gravity effect)
+      // This works regardless of phone orientation
+      const deltaX = data.x - baselineRef.current.x;
+      const deltaY = data.y - baselineRef.current.y;
+      const deltaZ = data.z - baselineRef.current.z;
+
+      // Combined magnitude of acceleration change
+      const accelerationMagnitude = Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
+
+      // Throttle UI updates to avoid React overhead (but detection runs at full speed)
+      if (now - lastUIUpdateRef.current >= UI_UPDATE_INTERVAL_MS) {
+        setRawData(data);
+        setCurrentAcceleration(accelerationMagnitude);
+        lastUIUpdateRef.current = now;
+      }
+
+      // Launch detection logic - runs at full 100Hz
       if (!launchDetectedRef.current) {
-        if (forwardAccelG >= launchThresholdG) {
+        if (accelerationMagnitude >= launchThresholdG) {
           consecutiveCountRef.current++;
 
           if (consecutiveCountRef.current >= CONSECUTIVE_SAMPLES_REQUIRED) {
             launchDetectedRef.current = true;
+            // Update UI immediately on launch
+            setCurrentAcceleration(accelerationMagnitude);
             onLaunchDetectedRef.current();
           }
         } else {

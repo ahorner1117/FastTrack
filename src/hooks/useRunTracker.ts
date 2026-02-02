@@ -17,9 +17,9 @@ import {
 import type { GPSPoint, Run, RunMilestone } from '../types';
 
 // Launch detection threshold in G-force
-// 0.3G is approximately the acceleration of a moderately quick car launch
-// This triggers within ~30ms of sustained acceleration at 100Hz sampling
-const LAUNCH_THRESHOLD_G = 0.3;
+// 0.15G is sensitive enough to catch quick starts but won't false trigger
+// Combined with baseline calibration, this triggers within ~10ms of acceleration
+const LAUNCH_THRESHOLD_G = 0.15;
 
 export function useRunTracker() {
   const {
