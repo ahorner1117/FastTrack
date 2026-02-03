@@ -1,25 +1,25 @@
+import { useRouter } from 'expo-router';
+import { Check, ChevronDown, ChevronRight, LogOut, Shield, User } from 'lucide-react-native';
 import React from 'react';
 import {
-  StyleSheet,
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  Pressable,
   Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronDown, Check, LogOut, User } from 'lucide-react-native';
 
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
-import { COLORS } from '@/src/utils/constants';
-import { useSettingsStore } from '@/src/stores/settingsStore';
-import { useAuthStore } from '@/src/stores/authStore';
-import { signOut } from '@/src/services/authService';
-import { Toggle } from '@/src/components/common/Toggle';
 import { Card } from '@/src/components/common/Card';
-import type { UnitSystem, Appearance, GPSAccuracy } from '@/src/types';
+import { Toggle } from '@/src/components/common/Toggle';
+import { signOut } from '@/src/services/authService';
+import { useAuthStore } from '@/src/stores/authStore';
+import { useSettingsStore } from '@/src/stores/settingsStore';
+import type { Appearance, GPSAccuracy, UnitSystem } from '@/src/types';
+import { COLORS } from '@/src/utils/constants';
 
 const APPEARANCE_OPTIONS: { value: Appearance; label: string }[] = [
   { value: 'system', label: 'System' },
@@ -34,18 +34,20 @@ const GPS_ACCURACY_OPTIONS: { value: GPSAccuracy; label: string; description: st
 ];
 
 const LAUNCH_THRESHOLD_OPTIONS: { value: string; label: string; description: string }[] = [
-  { value: '0.1', label: '0.1G', description: 'Very sensitive - may trigger from phone movement' },
   { value: '0.2', label: '0.2G', description: 'Sensitive - catches gentle starts' },
   { value: '0.3', label: '0.3G', description: 'Balanced - recommended for most uses' },
   { value: '0.4', label: '0.4G', description: 'Moderate - requires firmer acceleration' },
   { value: '0.5', label: '0.5G', description: 'Less sensitive - for sporty launches' },
+  { value: '0.6', label: '0.6G', description: 'Low sensitivity - filters most hand motion' },
+  { value: '0.7', label: '0.7G', description: 'Very low - requires strong acceleration' },
 ];
 
 const LAUNCH_SAMPLE_OPTIONS: { value: string; label: string; description: string }[] = [
-  { value: '1', label: '1 sample', description: 'Instant detection (10ms)' },
   { value: '2', label: '2 samples', description: 'Quick detection (20ms) - filters brief bumps' },
   { value: '3', label: '3 samples', description: 'Stable detection (30ms) - filters hand movement' },
-  { value: '4', label: '4 samples', description: 'Very stable (40ms) - most resistant to false triggers' },
+  { value: '4', label: '4 samples', description: 'Very stable (40ms) - resistant to false triggers' },
+  { value: '5', label: '5 samples', description: 'Extra stable (50ms) - high resistance' },
+  { value: '6', label: '6 samples', description: 'Maximum stability (60ms) - most resistant' },
 ];
 
 interface SettingRowProps {
@@ -141,33 +143,42 @@ function Dropdown({ options, selectedValue, onSelect, isDark, zIndex = 1 }: Drop
   const selectedOption = options.find((o) => o.value === selectedValue);
 
   return (
-    <View style={[styles.dropdownContainer, { zIndex: isOpen ? 1000 : zIndex }]}>
-      <TouchableOpacity
-        style={[
-          styles.dropdownButton,
-          { backgroundColor: isDark ? '#1A1A1A' : '#E5E5E5' },
-        ]}
-        onPress={() => setIsOpen(!isOpen)}
-      >
-        <Text style={[styles.dropdownButtonText, { color: colors.text }]}>
-          {selectedOption?.label}
-        </Text>
-        <ChevronDown
-          color={colors.textSecondary}
-          size={18}
-          style={{ transform: [{ rotate: isOpen ? '180deg' : '0deg' }] }}
-        />
-      </TouchableOpacity>
-
+    <>
       {isOpen && (
-        <View
+        <Pressable
+          style={styles.dropdownBackdrop}
+          onPress={() => setIsOpen(false)}
+        />
+      )}
+      <View style={[styles.dropdownContainer, { zIndex: isOpen ? 1000 : zIndex }]}>
+        <TouchableOpacity
+          style={[
+            styles.dropdownButton,
+            { backgroundColor: isDark ? '#1A1A1A' : '#E5E5E5' },
+          ]}
+          onPress={() => setIsOpen(!isOpen)}
+        >
+          <Text style={[styles.dropdownButtonText, { color: colors.text }]}>
+            {selectedOption?.label}
+          </Text>
+          <ChevronDown
+            color={colors.textSecondary}
+            size={18}
+            style={{ transform: [{ rotate: isOpen ? '180deg' : '0deg' }] }}
+          />
+        </TouchableOpacity>
+
+        {isOpen && (
+        <ScrollView
           style={[
             styles.dropdownMenu,
             {
               backgroundColor: isDark ? '#262626' : '#FFFFFF',
               borderColor: colors.border,
+              maxHeight: 300,
             },
           ]}
+          nestedScrollEnabled
         >
           {options.map((option) => {
             const isSelected = option.value === selectedValue;
@@ -208,9 +219,10 @@ function Dropdown({ options, selectedValue, onSelect, isDark, zIndex = 1 }: Drop
               </TouchableOpacity>
             );
           })}
-        </View>
+        </ScrollView>
       )}
-    </View>
+      </View>
+    </>
   );
 }
 
@@ -218,8 +230,9 @@ export default function SettingsScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const colors = Colors[isDark ? 'dark' : 'light'];
+  const router = useRouter();
 
-  const { user, profile } = useAuthStore();
+  const { user, profile, isAdmin } = useAuthStore();
 
   const {
     unitSystem,
@@ -291,6 +304,26 @@ export default function SettingsScreen() {
           </Text>
         </TouchableOpacity>
       </Card>
+
+      {isAdmin && (
+        <>
+          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+            ADMIN
+          </Text>
+          <Card isDark={isDark}>
+            <TouchableOpacity
+              style={styles.adminRow}
+              onPress={() => router.push('/admin')}
+            >
+              <Shield color={COLORS.accent} size={20} />
+              <Text style={[styles.adminRowText, { color: colors.text }]}>
+                Admin Portal
+              </Text>
+              <ChevronRight color={colors.textSecondary} size={20} />
+            </TouchableOpacity>
+          </Card>
+        </>
+      )}
 
       <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
         UNITS
@@ -469,6 +502,14 @@ const styles = StyleSheet.create({
   segmentedOptionTextSelected: {
     fontWeight: '600',
   },
+  dropdownBackdrop: {
+    position: 'absolute',
+    top: -1000,
+    left: -1000,
+    right: -1000,
+    bottom: -1000,
+    zIndex: 999,
+  },
   dropdownContainer: {
     position: 'relative',
   },
@@ -548,5 +589,16 @@ const styles = StyleSheet.create({
   signOutText: {
     fontSize: 16,
     fontWeight: '500',
+  },
+  adminRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  adminRowText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '500',
+    marginLeft: 10,
   },
 });

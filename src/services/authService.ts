@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../stores/authStore';
+import { syncAllUnsyncedRuns } from './syncService';
 import type { Profile } from '../types';
 
 interface SignUpParams {
@@ -115,6 +116,11 @@ export async function initializeAuth() {
     if (session?.user) {
       const profile = await getProfile(session.user.id);
       setProfile(profile);
+
+      // Sync any unsynced runs in background
+      syncAllUnsyncedRuns().catch((error) => {
+        console.error('Failed to sync runs on init:', error);
+      });
     }
 
     // Listen for auth state changes
@@ -124,6 +130,13 @@ export async function initializeAuth() {
       if (session?.user) {
         const profile = await getProfile(session.user.id);
         setProfile(profile);
+
+        // Sync any unsynced runs when user signs in
+        if (event === 'SIGNED_IN') {
+          syncAllUnsyncedRuns().catch((error) => {
+            console.error('Failed to sync runs on sign in:', error);
+          });
+        }
       } else {
         setProfile(null);
       }

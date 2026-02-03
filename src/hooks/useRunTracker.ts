@@ -9,6 +9,7 @@ import { useLocation } from './useLocation';
 import { useAccelerometer } from './useAccelerometer';
 import { useHistoryStore } from '../stores/historyStore';
 import { calculateDistance } from '../services/locationService';
+import { syncRunToCloud } from '../services/syncService';
 import {
   SPEED_THRESHOLDS,
   DISTANCE_THRESHOLDS,
@@ -49,6 +50,7 @@ export function useRunTracker() {
     defaultVehicleId,
   } = useSettingsStore();
   const addRun = useHistoryStore((state) => state.addRun);
+  const markRunSynced = useHistoryStore((state) => state.markRunSynced);
 
   const {
     hasPermission,
@@ -339,6 +341,17 @@ export function useRunTracker() {
               },
             };
             addRun(completedRun);
+
+            // Sync run to cloud in background
+            syncRunToCloud(completedRun)
+              .then((cloudRun) => {
+                if (cloudRun) {
+                  markRunSynced(completedRun.id);
+                }
+              })
+              .catch((error) => {
+                console.error('Failed to sync run to cloud:', error);
+              });
           }
         }
 
@@ -364,7 +377,7 @@ export function useRunTracker() {
         }
         break;
     }
-  }, [status, hapticFeedback, autoSaveRuns, addRun, arm, stop, reset, setStatus, isAccuracyOk, launchDetectionThresholdG, launchDetectionSampleCount]);
+  }, [status, hapticFeedback, autoSaveRuns, addRun, markRunSynced, arm, stop, reset, setStatus, isAccuracyOk, launchDetectionThresholdG, launchDetectionSampleCount]);
 
   // Check if current speed is too fast to start a run
   const maxStartSpeed = unitSystem === 'imperial'

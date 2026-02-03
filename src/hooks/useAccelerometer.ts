@@ -8,11 +8,11 @@ const ACCELEROMETER_INTERVAL_MS = 10;
 // Default launch detection threshold in G-force (1G = 9.81 m/s²)
 // 0.25G is sensitive enough to catch quick starts but won't trigger from hand movement
 // A typical brisk car acceleration is 0.2-0.5G
-const DEFAULT_LAUNCH_THRESHOLD_G = 0.25;
+const DEFAULT_LAUNCH_THRESHOLD_G = 0.4;
 
 // Default number of consecutive samples above threshold to confirm launch
 // At 100Hz, 2 samples = 20ms - filters brief impulses while still being responsive
-const DEFAULT_CONSECUTIVE_SAMPLES_REQUIRED = 2;
+const DEFAULT_CONSECUTIVE_SAMPLES_REQUIRED = 4
 
 // Gravity constant
 const GRAVITY = 9.81;

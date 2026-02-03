@@ -55,9 +55,7 @@ export function VehicleForm({
   const [notes, setNotes] = React.useState(initialData?.notes ?? '');
 
   React.useEffect(() => {
-    if (initialData?.photoUri !== undefined) {
-      setPhotoUri(initialData.photoUri);
-    }
+    setPhotoUri(initialData?.photoUri);
   }, [initialData?.photoUri]);
 
   const handleToggleUpgrade = (upgrade: VehicleUpgrade) => {

@@ -31,7 +31,7 @@ export default function TimerScreen() {
   // Drive tracking mode hook
   const driveTracker = useDriveTracker();
 
-  const { unitSystem, gpsAccuracy, hapticFeedback } = useSettingsStore();
+  const { unitSystem, gpsAccuracy, hapticFeedback, launchDetectionThresholdG, launchDetectionSampleCount } = useSettingsStore();
   const gpsPoints = useRunStore((state) => state.gpsPoints);
   const vehicles = useVehicleStore((state) => state.vehicles);
 
@@ -118,6 +118,8 @@ export default function TimerScreen() {
                 currentAcceleration={runTracker.currentAcceleration}
                 isAccelerometerAvailable={runTracker.isAccelerometerAvailable}
                 isTooFastToStart={runTracker.isTooFastToStart}
+                launchThreshold={launchDetectionThresholdG}
+                sampleCount={launchDetectionSampleCount}
               />
             </View>
 

@@ -16,6 +16,8 @@ interface LaunchStatusProps {
   currentAcceleration: number;
   isAccelerometerAvailable: boolean;
   isTooFastToStart?: boolean;
+  launchThreshold?: number;
+  sampleCount?: number;
 }
 
 export function LaunchStatus({
@@ -23,6 +25,8 @@ export function LaunchStatus({
   currentAcceleration,
   isAccelerometerAvailable,
   isTooFastToStart = false,
+  launchThreshold,
+  sampleCount,
 }: LaunchStatusProps) {
   const opacity = useSharedValue(1);
 
@@ -76,7 +80,9 @@ export function LaunchStatus({
   const getSubMessage = () => {
     if (status === 'armed' && isAccelerometerAvailable) {
       const gForce = currentAcceleration.toFixed(2);
-      return `Current: ${gForce}G`;
+      const thresholdStr = launchThreshold !== undefined ? `${launchThreshold}G` : '?';
+      const samplesStr = sampleCount !== undefined ? `×${sampleCount}` : '';
+      return `Current: ${gForce}G | Threshold: ${thresholdStr}${samplesStr}`;
     }
     return null;
   };
