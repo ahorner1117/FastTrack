@@ -2,8 +2,7 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { useFonts } from 'expo-font';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { useEffect, useState } from 'react';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/components/useColorScheme';
@@ -11,6 +10,7 @@ import { useSettingsStore } from '@/src/stores/settingsStore';
 import { useAuthStore } from '@/src/stores/authStore';
 import { initializeAuth } from '@/src/services/authService';
 import { COLORS } from '@/src/utils/constants';
+import { RPMGauge } from '@/src/components/Loading';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -18,7 +18,10 @@ export const unstable_settings = {
   initialRouteName: '(tabs)',
 };
 
-SplashScreen.preventAutoHideAsync();
+// Hide native splash immediately - we'll show our custom RPM gauge instead
+SplashScreen.preventAutoHideAsync().then(() => {
+  SplashScreen.hideAsync();
+});
 
 const FastTrackDarkTheme = {
   ...DarkTheme,
@@ -45,25 +48,25 @@ const FastTrackLightTheme = {
 };
 
 export default function RootLayout() {
-  const [loaded, error] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
+  const [authInitialized, setAuthInitialized] = useState(false);
 
   useEffect(() => {
-    if (error) throw error;
-  }, [error]);
+    if (fontError) throw fontError;
+  }, [fontError]);
 
   useEffect(() => {
-    if (loaded) {
-      // Initialize auth when fonts are loaded
-      initializeAuth().then(() => {
-        SplashScreen.hideAsync();
-      });
-    }
-  }, [loaded]);
+    // Initialize auth immediately
+    initializeAuth().then(() => {
+      setAuthInitialized(true);
+    });
+  }, []);
 
-  if (!loaded) {
-    return null;
+  // Show RPM gauge while fonts or auth are loading
+  if (!fontsLoaded || !authInitialized) {
+    return <RPMGauge />;
   }
 
   return <RootLayoutNav />;
@@ -92,21 +95,11 @@ function useProtectedRoute() {
 function RootLayoutNav() {
   const systemColorScheme = useColorScheme();
   const { appearance } = useSettingsStore();
-  const { isLoading } = useAuthStore();
 
   useProtectedRoute();
 
   const colorScheme =
     appearance === 'system' ? systemColorScheme : appearance;
-  const colors = colorScheme === 'dark' ? COLORS.dark : COLORS.light;
-
-  if (isLoading) {
-    return (
-      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
-        <ActivityIndicator size="large" color={COLORS.accent} />
-      </View>
-    );
-  }
 
   return (
     <ThemeProvider
@@ -166,10 +159,3 @@ function RootLayoutNav() {
   );
 }
 
-const styles = StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-});
