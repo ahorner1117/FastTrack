@@ -17,8 +17,10 @@ import { useAuthStore } from '@/src/stores/authStore';
 import {
   getLeaderboard,
   getFriendsLeaderboard,
+  getPersonalBests,
+  type PersonalBests as PersonalBestsType,
 } from '@/src/services/leaderboardService';
-import { LeaderboardCard, LeaderboardHeader } from '@/src/components/Leaderboard';
+import { LeaderboardCard, LeaderboardHeader, PersonalBests } from '@/src/components/Leaderboard';
 import type { LeaderboardCategory, LeaderboardEntry } from '@/src/types';
 
 type LeaderboardScope = 'global' | 'friends';
@@ -35,6 +37,29 @@ export default function LeaderboardScreen() {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [personalBests, setPersonalBests] = useState<PersonalBestsType>({
+    zero_to_sixty: null,
+    zero_to_hundred: null,
+    quarter_mile: null,
+    half_mile: null,
+  });
+  const [isLoadingBests, setIsLoadingBests] = useState(true);
+
+  const fetchPersonalBests = useCallback(async () => {
+    if (!user) {
+      setIsLoadingBests(false);
+      return;
+    }
+    setIsLoadingBests(true);
+    try {
+      const bests = await getPersonalBests();
+      setPersonalBests(bests);
+    } catch {
+      // Silently fail - personal bests are optional
+    } finally {
+      setIsLoadingBests(false);
+    }
+  }, [user]);
 
   const fetchLeaderboard = useCallback(async () => {
     setIsLoading(true);
@@ -57,6 +82,10 @@ export default function LeaderboardScreen() {
   useEffect(() => {
     fetchLeaderboard();
   }, [fetchLeaderboard]);
+
+  useEffect(() => {
+    fetchPersonalBests();
+  }, [fetchPersonalBests]);
 
   const renderEntry = ({ item }: { item: LeaderboardEntry }) => (
     <LeaderboardCard
@@ -154,11 +183,23 @@ export default function LeaderboardScreen() {
             styles.listContent,
             entries.length === 0 && styles.emptyListContent,
           ]}
+          ListHeaderComponent={
+            user ? (
+              <PersonalBests
+                bests={personalBests}
+                isLoading={isLoadingBests}
+                isDark={isDark}
+              />
+            ) : null
+          }
           ListEmptyComponent={renderEmptyList}
           refreshControl={
             <RefreshControl
               refreshing={isLoading}
-              onRefresh={fetchLeaderboard}
+              onRefresh={() => {
+                fetchLeaderboard();
+                fetchPersonalBests();
+              }}
               tintColor={COLORS.accent}
             />
           }
