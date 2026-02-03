@@ -5,6 +5,10 @@ import { useColorScheme } from '@/components/useColorScheme';
 import { VehicleForm } from '@/src/components/Garage';
 import { useVehicleStore } from '@/src/stores/vehicleStore';
 import { pickImage } from '@/src/utils/imagePicker';
+import {
+  uploadVehicleImage,
+  isSupabaseUrl,
+} from '@/src/services/imageService';
 import type { VehicleUpgrade, VehicleType } from '@/src/types';
 
 export default function AddVehicleScreen() {
@@ -14,6 +18,7 @@ export default function AddVehicleScreen() {
   const addVehicle = useVehicleStore((state) => state.addVehicle);
 
   const [photoUri, setPhotoUri] = React.useState<string | undefined>();
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const handlePickImage = async () => {
     const result = await pickImage();
@@ -26,7 +31,7 @@ export default function AddVehicleScreen() {
     setPhotoUri(undefined);
   };
 
-  const handleSubmit = (data: {
+  const handleSubmit = async (data: {
     type: VehicleType;
     year: string;
     make: string;
@@ -43,14 +48,36 @@ export default function AddVehicleScreen() {
       return;
     }
 
+    setIsSubmitting(true);
+
+    const vehicleId = `vehicle_${now}`;
+    let finalPhotoUri = photoUri;
+
+    // Upload image to Supabase if we have a local image
+    if (photoUri && !isSupabaseUrl(photoUri)) {
+      const { url, error } = await uploadVehicleImage(photoUri, vehicleId);
+      if (error) {
+        setIsSubmitting(false);
+        if (error.type === 'not_authenticated') {
+          // Save locally if not authenticated
+          finalPhotoUri = photoUri;
+        } else {
+          Alert.alert('Image Upload Failed', error.message);
+          return;
+        }
+      } else if (url) {
+        finalPhotoUri = url;
+      }
+    }
+
     const vehicle = {
-      id: `vehicle_${now}`,
+      id: vehicleId,
       name: `${data.year} ${data.make} ${data.model}`,
       type: data.type,
       year,
       make: data.make.trim(),
       model: data.model.trim(),
-      photoUri: photoUri,
+      photoUri: finalPhotoUri,
       upgrades: data.upgrades,
       notes: data.notes.trim() || undefined,
       createdAt: now,
@@ -58,6 +85,7 @@ export default function AddVehicleScreen() {
     };
 
     addVehicle(vehicle);
+    setIsSubmitting(false);
     router.back();
   };
 
@@ -69,6 +97,7 @@ export default function AddVehicleScreen() {
       onRemoveImage={handleRemoveImage}
       isDark={isDark}
       submitLabel="Add Vehicle"
+      isSubmitting={isSubmitting}
     />
   );
 }

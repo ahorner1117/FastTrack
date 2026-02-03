@@ -8,6 +8,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { Camera, X, Check } from 'lucide-react-native';
 import type { Vehicle, VehicleUpgrade, VehicleType } from '../../types';
@@ -32,6 +33,7 @@ interface VehicleFormProps {
   onRemoveImage: () => void;
   isDark?: boolean;
   submitLabel?: string;
+  isSubmitting?: boolean;
 }
 
 export function VehicleForm({
@@ -41,6 +43,7 @@ export function VehicleForm({
   onRemoveImage,
   isDark = true,
   submitLabel = 'Save',
+  isSubmitting = false,
 }: VehicleFormProps) {
   const colors = isDark ? COLORS.dark : COLORS.light;
 
@@ -245,23 +248,28 @@ export function VehicleForm({
           style={[
             styles.submitButton,
             {
-              backgroundColor: isValid ? COLORS.accent : colors.surfaceElevated,
+              backgroundColor:
+                isValid && !isSubmitting ? COLORS.accent : colors.surfaceElevated,
             },
           ]}
           onPress={handleSubmit}
-          disabled={!isValid}
+          disabled={!isValid || isSubmitting}
           activeOpacity={0.8}
         >
-          <Text
-            style={[
-              styles.submitButtonText,
-              {
-                color: isValid ? '#000000' : colors.textTertiary,
-              },
-            ]}
-          >
-            {submitLabel}
-          </Text>
+          {isSubmitting ? (
+            <ActivityIndicator size="small" color="#000000" />
+          ) : (
+            <Text
+              style={[
+                styles.submitButtonText,
+                {
+                  color: isValid ? '#000000' : colors.textTertiary,
+                },
+              ]}
+            >
+              {submitLabel}
+            </Text>
+          )}
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>

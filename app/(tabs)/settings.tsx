@@ -1,12 +1,13 @@
 import { useRouter } from 'expo-router';
-import { Check, ChevronDown, ChevronRight, LogOut, Shield, User } from 'lucide-react-native';
-import React from 'react';
+import { Check, ChevronDown, ChevronRight, LogOut, Phone, Shield, User } from 'lucide-react-native';
+import React, { useState } from 'react';
 import {
   Alert,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -15,7 +16,8 @@ import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
 import { Card } from '@/src/components/common/Card';
 import { Toggle } from '@/src/components/common/Toggle';
-import { signOut } from '@/src/services/authService';
+import { signOut, updateProfile, getProfile } from '@/src/services/authService';
+import { hashPhoneNumber } from '@/src/services/contactsService';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useSettingsStore } from '@/src/stores/settingsStore';
 import type { Appearance, GPSAccuracy, UnitSystem } from '@/src/types';
@@ -232,7 +234,28 @@ export default function SettingsScreen() {
   const colors = Colors[isDark ? 'dark' : 'light'];
   const router = useRouter();
 
-  const { user, profile, isAdmin } = useAuthStore();
+  const { user, profile, isAdmin, setProfile } = useAuthStore();
+
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [isSavingPhone, setIsSavingPhone] = useState(false);
+
+  const handleSavePhoneNumber = async () => {
+    if (!user || !phoneNumber.trim()) return;
+
+    setIsSavingPhone(true);
+    try {
+      const phone_hash = await hashPhoneNumber(phoneNumber);
+      await updateProfile(user.id, { phone_hash });
+      const updatedProfile = await getProfile(user.id);
+      setProfile(updatedProfile);
+      setPhoneNumber('');
+      Alert.alert('Success', 'Phone number saved. Friends can now find you by your number.');
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to save phone number');
+    } finally {
+      setIsSavingPhone(false);
+    }
+  };
 
   const {
     unitSystem,
@@ -292,6 +315,54 @@ export default function SettingsScreen() {
             <Text style={[styles.accountEmail, { color: colors.textSecondary }]}>
               {user?.email}
             </Text>
+          </View>
+        </View>
+
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+        <View style={styles.phoneSection}>
+          <View style={styles.phoneLabelRow}>
+            <Phone color={colors.textSecondary} size={18} />
+            <Text style={[styles.phoneLabel, { color: colors.text }]}>
+              Phone Number
+            </Text>
+            {profile?.phone_hash && (
+              <Text style={[styles.phoneStatus, { color: COLORS.accent }]}>
+                Registered
+              </Text>
+            )}
+          </View>
+          <Text style={[styles.phoneDescription, { color: colors.textSecondary }]}>
+            Add your phone so friends can find you from their contacts
+          </Text>
+          <View style={styles.phoneInputRow}>
+            <TextInput
+              style={[
+                styles.phoneInput,
+                {
+                  backgroundColor: isDark ? '#1A1A1A' : '#E5E5E5',
+                  color: colors.text,
+                },
+              ]}
+              placeholder={profile?.phone_hash ? 'Update phone number' : 'Enter phone number'}
+              placeholderTextColor={colors.textSecondary}
+              value={phoneNumber}
+              onChangeText={setPhoneNumber}
+              keyboardType="phone-pad"
+              autoComplete="tel"
+            />
+            <TouchableOpacity
+              style={[
+                styles.phoneSaveButton,
+                { opacity: phoneNumber.trim() && !isSavingPhone ? 1 : 0.5 },
+              ]}
+              onPress={handleSavePhoneNumber}
+              disabled={!phoneNumber.trim() || isSavingPhone}
+            >
+              <Text style={styles.phoneSaveText}>
+                {isSavingPhone ? 'Saving...' : 'Save'}
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -600,5 +671,49 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     marginLeft: 10,
+  },
+  phoneSection: {
+    marginVertical: 4,
+  },
+  phoneLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  phoneLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    flex: 1,
+  },
+  phoneStatus: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  phoneDescription: {
+    fontSize: 12,
+    marginBottom: 12,
+  },
+  phoneInputRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  phoneInput: {
+    flex: 1,
+    height: 44,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    fontSize: 16,
+  },
+  phoneSaveButton: {
+    backgroundColor: COLORS.accent,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+  },
+  phoneSaveText: {
+    color: '#000000',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

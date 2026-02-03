@@ -42,22 +42,29 @@ export async function getContactsWithPhoneHashes(): Promise<NormalizedContact[]>
     fields: [Contacts.Fields.PhoneNumbers, Contacts.Fields.Name],
   });
 
-  const contacts: NormalizedContact[] = [];
-
+  // Collect all phone entries first
+  const phoneEntries: { name: string; phone: string }[] = [];
   for (const contact of data) {
     if (contact.phoneNumbers && contact.phoneNumbers.length > 0) {
       for (const phone of contact.phoneNumbers) {
         if (phone.number) {
-          const phoneHash = await hashPhoneNumber(phone.number);
-          contacts.push({
+          phoneEntries.push({
             name: contact.name || 'Unknown',
-            phoneHash,
-            originalPhone: phone.number,
+            phone: phone.number,
           });
         }
       }
     }
   }
+
+  // Hash all phone numbers in parallel
+  const contacts = await Promise.all(
+    phoneEntries.map(async (entry) => ({
+      name: entry.name,
+      phoneHash: await hashPhoneNumber(entry.phone),
+      originalPhone: entry.phone,
+    }))
+  );
 
   return contacts;
 }

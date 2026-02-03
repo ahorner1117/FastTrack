@@ -11,17 +11,28 @@ export async function findUsersFromPhoneHashes(
 ): Promise<Profile[]> {
   if (phoneHashes.length === 0) return [];
 
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .in('phone_hash', phoneHashes);
+  // Batch requests to avoid URL length limits (100 hashes per request)
+  const BATCH_SIZE = 100;
+  const results: Profile[] = [];
 
-  if (error) {
-    console.error('Error finding users:', error);
-    throw error;
+  for (let i = 0; i < phoneHashes.length; i += BATCH_SIZE) {
+    const batch = phoneHashes.slice(i, i + BATCH_SIZE);
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .in('phone_hash', batch);
+
+    if (error) {
+      console.error('Error finding users:', error);
+      throw error;
+    }
+
+    if (data) {
+      results.push(...data);
+    }
   }
 
-  return data || [];
+  return results;
 }
 
 export async function sendFriendRequest(friendId: string): Promise<Friendship> {

@@ -6,8 +6,10 @@ import {
   FlatList,
   ActivityIndicator,
   Alert,
+  TouchableOpacity,
+  Share,
 } from 'react-native';
-import { Search, Users } from 'lucide-react-native';
+import { Search, Users, RefreshCw, Share2 } from 'lucide-react-native';
 
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
@@ -50,6 +52,7 @@ export default function AddFriendsScreen() {
     try {
       // Get contacts with phone hashes
       const contacts = await getContactsWithPhoneHashes();
+      console.log(`Loaded ${contacts.length} phone numbers from contacts`);
 
       // Get unique hashes
       const hashToContact = new Map<string, NormalizedContact>();
@@ -60,9 +63,11 @@ export default function AddFriendsScreen() {
       });
 
       const uniqueHashes = Array.from(hashToContact.keys());
+      console.log(`Unique phone hashes: ${uniqueHashes.length}`);
 
       // Find matching users in Supabase
       const matchedUsers = await findUsersFromPhoneHashes(uniqueHashes);
+      console.log(`Matched users in database: ${matchedUsers.length}`, matchedUsers.map(u => u.display_name || u.email));
 
       // Filter out self and existing friends
       const friendIds = new Set(
@@ -85,10 +90,15 @@ export default function AddFriendsScreen() {
 
       setMatchedContacts(matched);
     } catch (err: any) {
+      console.error('Error loading contacts:', JSON.stringify(err, null, 2), err.message, err.code);
       if (err.message === 'Contacts permission not granted') {
         setError('Please grant contacts permission to find friends');
+      } else if (err.code === 'PGRST301' || err.message?.includes('JWT')) {
+        setError('Please sign in to find friends');
+      } else if (err.code?.startsWith('PGRST') || err.message?.includes('supabase')) {
+        setError('Unable to connect to server. Please try again.');
       } else {
-        setError('Failed to load contacts');
+        setError(err.message || 'Failed to load contacts');
       }
     } finally {
       setIsLoading(false);
@@ -118,6 +128,16 @@ export default function AddFriendsScreen() {
     />
   );
 
+  const handleInvite = async () => {
+    try {
+      await Share.share({
+        message: "Track your 0-60 and quarter mile times with FastTrack! Download it here: https://apps.apple.com/app/fasttrack",
+      });
+    } catch (error) {
+      // User cancelled or error occurred
+    }
+  };
+
   const renderEmptyList = () => {
     if (isLoading) return null;
 
@@ -130,6 +150,10 @@ export default function AddFriendsScreen() {
         <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
           None of your contacts are using FastTrack yet. Invite them to join!
         </Text>
+        <TouchableOpacity style={styles.inviteButton} onPress={handleInvite}>
+          <Share2 color="#000000" size={20} />
+          <Text style={styles.inviteButtonText}>Invite Friends</Text>
+        </TouchableOpacity>
       </View>
     );
   };
@@ -139,6 +163,13 @@ export default function AddFriendsScreen() {
       <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
         <Users color={colors.textSecondary} size={48} />
         <Text style={[styles.emptyTitle, { color: colors.text }]}>{error}</Text>
+        <TouchableOpacity
+          style={styles.retryButton}
+          onPress={loadContacts}
+        >
+          <RefreshCw color={COLORS.accent} size={20} />
+          <Text style={styles.retryText}>Retry</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -217,5 +248,35 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 24,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 149, 0, 0.1)',
+    gap: 8,
+  },
+  retryText: {
+    color: COLORS.accent,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  inviteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 24,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 10,
+    backgroundColor: COLORS.accent,
+    gap: 10,
+  },
+  inviteButtonText: {
+    color: '#000000',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

@@ -5,6 +5,10 @@ import { useColorScheme } from '@/components/useColorScheme';
 import { VehicleForm } from '@/src/components/Garage';
 import { useVehicleStore } from '@/src/stores/vehicleStore';
 import { pickImage } from '@/src/utils/imagePicker';
+import {
+  uploadVehicleImage,
+  isSupabaseUrl,
+} from '@/src/services/imageService';
 import type { VehicleUpgrade, VehicleType } from '@/src/types';
 
 export default function EditVehicleScreen() {
@@ -19,6 +23,7 @@ export default function EditVehicleScreen() {
   const [photoUri, setPhotoUri] = React.useState<string | undefined>(
     vehicle?.photoUri
   );
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   if (!vehicle) {
     router.back();
@@ -36,7 +41,7 @@ export default function EditVehicleScreen() {
     setPhotoUri(undefined);
   };
 
-  const handleSubmit = (data: {
+  const handleSubmit = async (data: {
     type: VehicleType;
     year: string;
     make: string;
@@ -52,17 +57,39 @@ export default function EditVehicleScreen() {
       return;
     }
 
+    setIsSubmitting(true);
+
+    let finalPhotoUri = photoUri;
+
+    // Upload image to Supabase if we have a new local image
+    if (photoUri && !isSupabaseUrl(photoUri)) {
+      const { url, error } = await uploadVehicleImage(photoUri, id);
+      if (error) {
+        setIsSubmitting(false);
+        if (error.type === 'not_authenticated') {
+          // Save locally if not authenticated
+          finalPhotoUri = photoUri;
+        } else {
+          Alert.alert('Image Upload Failed', error.message);
+          return;
+        }
+      } else if (url) {
+        finalPhotoUri = url;
+      }
+    }
+
     updateVehicle(id, {
       name: `${data.year} ${data.make} ${data.model}`,
       type: data.type,
       year,
       make: data.make.trim(),
       model: data.model.trim(),
-      photoUri: photoUri,
+      photoUri: finalPhotoUri,
       upgrades: data.upgrades,
       notes: data.notes.trim() || undefined,
     });
 
+    setIsSubmitting(false);
     router.back();
   };
 
@@ -88,6 +115,7 @@ export default function EditVehicleScreen() {
         onRemoveImage={handleRemoveImage}
         isDark={isDark}
         submitLabel="Save Changes"
+        isSubmitting={isSubmitting}
       />
     </>
   );
