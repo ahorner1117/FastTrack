@@ -13,7 +13,7 @@ import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
 import { VehicleImage } from '@/src/components/Garage';
 import { useVehicleStore } from '@/src/stores/vehicleStore';
-import { COLORS, VEHICLE_UPGRADES } from '@/src/utils/constants';
+import { COLORS, VEHICLE_UPGRADES, VEHICLE_TYPES } from '@/src/utils/constants';
 
 export default function VehicleDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -61,6 +61,9 @@ export default function VehicleDetailScreen() {
     .map((u) => VEHICLE_UPGRADES.find((v) => v.value === u)?.label)
     .filter(Boolean);
 
+  const vehicleTypeLabel =
+    VEHICLE_TYPES.find((t) => t.value === vehicle.type)?.label ?? 'Car';
+
   return (
     <>
       <Stack.Screen
@@ -90,6 +93,15 @@ export default function VehicleDetailScreen() {
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
             VEHICLE INFO
           </Text>
+          <View style={styles.infoRow}>
+            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
+              Type
+            </Text>
+            <Text style={[styles.infoValue, { color: colors.text }]}>
+              {vehicleTypeLabel}
+            </Text>
+          </View>
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
           <View style={styles.infoRow}>
             <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
               Year

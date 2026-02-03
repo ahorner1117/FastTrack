@@ -5,7 +5,7 @@ import { useColorScheme } from '@/components/useColorScheme';
 import { VehicleForm } from '@/src/components/Garage';
 import { useVehicleStore } from '@/src/stores/vehicleStore';
 import { pickImage } from '@/src/utils/imagePicker';
-import type { VehicleUpgrade } from '@/src/types';
+import type { VehicleUpgrade, VehicleType } from '@/src/types';
 
 export default function AddVehicleScreen() {
   const router = useRouter();
@@ -27,6 +27,7 @@ export default function AddVehicleScreen() {
   };
 
   const handleSubmit = (data: {
+    type: VehicleType;
     year: string;
     make: string;
     model: string;
@@ -45,6 +46,7 @@ export default function AddVehicleScreen() {
     const vehicle = {
       id: `vehicle_${now}`,
       name: `${data.year} ${data.make} ${data.model}`,
+      type: data.type,
       year,
       make: data.make.trim(),
       model: data.model.trim(),

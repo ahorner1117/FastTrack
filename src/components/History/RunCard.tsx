@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
-import { ChevronRight, Gauge, Timer, Activity, Circle, CheckCircle2 } from 'lucide-react-native';
+import { ChevronRight, Gauge, Timer, Circle, CheckCircle2 } from 'lucide-react-native';
 import type { Run, UnitSystem } from '../../types';
 import { COLORS } from '../../utils/constants';
 import {
@@ -16,9 +16,10 @@ interface RunCardProps {
   isSelecting?: boolean;
   isSelected?: boolean;
   onToggleSelect?: () => void;
+  vehicleName?: string;
 }
 
-export function RunCard({ run, unitSystem, onPress, isSelecting, isSelected, onToggleSelect }: RunCardProps) {
+export function RunCard({ run, unitSystem, onPress, isSelecting, isSelected, onToggleSelect, vehicleName }: RunCardProps) {
   // Get the best milestone to display
   const getBestMilestone = () => {
     const { milestones } = run;
@@ -78,6 +79,9 @@ export function RunCard({ run, unitSystem, onPress, isSelecting, isSelected, onT
       <View style={styles.content}>
         <View style={styles.header}>
           <Text style={styles.date}>{formatRelativeDate(run.createdAt)}</Text>
+          {vehicleName && (
+            <Text style={styles.vehicleName}>{vehicleName}</Text>
+          )}
         </View>
 
         <View style={styles.stats}>
@@ -98,16 +102,6 @@ export function RunCard({ run, unitSystem, onPress, isSelecting, isSelected, onT
               {formatSpeed(run.maxSpeed, unitSystem)}
             </Text>
           </View>
-
-          {run.launchDetectionConfig && (
-            <View style={styles.stat}>
-              <Activity color={COLORS.dark.textTertiary} size={16} />
-              <Text style={styles.statLabel}>Launch</Text>
-              <Text style={styles.statValue}>
-                {run.launchDetectionConfig.thresholdG}G
-              </Text>
-            </View>
-          )}
         </View>
       </View>
 
@@ -143,6 +137,11 @@ const styles = StyleSheet.create({
   date: {
     fontSize: 14,
     color: COLORS.dark.textSecondary,
+  },
+  vehicleName: {
+    fontSize: 12,
+    color: COLORS.dark.textTertiary,
+    marginTop: 2,
   },
   stats: {
     flexDirection: 'row',

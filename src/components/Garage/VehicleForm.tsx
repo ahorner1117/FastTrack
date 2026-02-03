@@ -9,13 +9,14 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { Camera, X } from 'lucide-react-native';
-import type { Vehicle, VehicleUpgrade } from '../../types';
-import { COLORS } from '../../utils/constants';
+import { Camera, X, Check } from 'lucide-react-native';
+import type { Vehicle, VehicleUpgrade, VehicleType } from '../../types';
+import { COLORS, VEHICLE_TYPES } from '../../utils/constants';
 import { VehicleImage } from './VehicleImage';
 import { UpgradeSelector } from './UpgradeSelector';
 
 interface VehicleFormData {
+  type: VehicleType;
   year: string;
   make: string;
   model: string;
@@ -43,6 +44,7 @@ export function VehicleForm({
 }: VehicleFormProps) {
   const colors = isDark ? COLORS.dark : COLORS.light;
 
+  const [type, setType] = React.useState<VehicleType>(initialData?.type ?? 'car');
   const [year, setYear] = React.useState(initialData?.year ?? '');
   const [make, setMake] = React.useState(initialData?.make ?? '');
   const [model, setModel] = React.useState(initialData?.model ?? '');
@@ -71,6 +73,7 @@ export function VehicleForm({
       return;
     }
     onSubmit({
+      type,
       year,
       make,
       model,
@@ -115,6 +118,44 @@ export function VehicleForm({
               <X color={COLORS.dark.error} size={16} />
             </TouchableOpacity>
           )}
+        </View>
+
+        <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+          VEHICLE TYPE
+        </Text>
+        <View style={[styles.card, { backgroundColor: colors.surface }]}>
+          <View style={styles.typeSelector}>
+            {VEHICLE_TYPES.map((vehicleType) => (
+              <TouchableOpacity
+                key={vehicleType.value}
+                style={[
+                  styles.typeOption,
+                  {
+                    backgroundColor:
+                      type === vehicleType.value
+                        ? COLORS.accent
+                        : colors.surfaceElevated,
+                  },
+                ]}
+                onPress={() => setType(vehicleType.value as VehicleType)}
+                activeOpacity={0.8}
+              >
+                {type === vehicleType.value && (
+                  <Check color="#000000" size={16} style={styles.typeCheckIcon} />
+                )}
+                <Text
+                  style={[
+                    styles.typeOptionText,
+                    {
+                      color: type === vehicleType.value ? '#000000' : colors.text,
+                    },
+                  ]}
+                >
+                  {vehicleType.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
@@ -277,6 +318,25 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 12,
     padding: 16,
+  },
+  typeSelector: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  typeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+  },
+  typeCheckIcon: {
+    marginRight: 6,
+  },
+  typeOptionText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
   inputRow: {
     flexDirection: 'row',

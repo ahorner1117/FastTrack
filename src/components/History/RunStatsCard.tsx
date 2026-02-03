@@ -121,6 +121,13 @@ export function RunStatsCard({ run, unitSystem }: RunStatsCardProps) {
         )}
 
         <StatRow label="GPS Points" value={`${run.gpsPoints.length}`} />
+
+        {run.launchDetectionConfig && (
+          <StatRow
+            label="Launch Detection"
+            value={`${run.launchDetectionConfig.thresholdG}G / ${run.launchDetectionConfig.sampleCount} samples`}
+          />
+        )}
       </View>
 
       {/* Info Section */}

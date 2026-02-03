@@ -71,6 +71,13 @@ export const STORAGE_KEYS = {
   AUTH_SESSION: '@fasttrack/auth-session',
 } as const;
 
+// Vehicle types
+export const VEHICLE_TYPES = [
+  { value: 'car', label: 'Car' },
+  { value: 'motorcycle', label: 'Motorcycle' },
+  { value: 'other', label: 'Other (ATV, Dirtbike, etc.)' },
+] as const;
+
 // Vehicle upgrades
 export const VEHICLE_UPGRADES = [
   { value: 'exhaust', label: 'Exhaust' },

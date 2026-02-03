@@ -12,7 +12,9 @@ import {
   ModeSelector,
   DriveStats,
   DriveButton,
+  VehicleSelector,
 } from '../../src/components/Timer';
+import { useVehicleStore } from '../../src/stores/vehicleStore';
 import { useRunTracker } from '../../src/hooks/useRunTracker';
 import { useDriveTracker } from '../../src/hooks/useDriveTracker';
 import { useRunStore } from '../../src/stores/runStore';
@@ -31,6 +33,7 @@ export default function TimerScreen() {
 
   const { unitSystem, gpsAccuracy, hapticFeedback } = useSettingsStore();
   const gpsPoints = useRunStore((state) => state.gpsPoints);
+  const vehicles = useVehicleStore((state) => state.vehicles);
 
   // Determine if we can switch modes (only when idle/ready)
   const canSwitchMode =
@@ -78,6 +81,13 @@ export default function TimerScreen() {
         {mode === 'acceleration' ? (
           // ACCELERATION MODE
           <>
+            {/* Vehicle Selector - only show if user has vehicles */}
+            {vehicles.length > 0 && (
+              <VehicleSelector
+                disabled={runTracker.status === 'armed' || runTracker.status === 'running'}
+              />
+            )}
+
             {/* Timer Display */}
             <View style={styles.timerSection}>
               <TimerDisplay

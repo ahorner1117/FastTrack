@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   StyleSheet,
   View,
@@ -14,6 +14,7 @@ import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
 import { COLORS } from '@/src/utils/constants';
 import { useAuthStore } from '@/src/stores/authStore';
+import { useHistoryStore } from '@/src/stores/historyStore';
 import {
   getLeaderboard,
   getFriendsLeaderboard,
@@ -25,25 +26,86 @@ import type { LeaderboardCategory, LeaderboardEntry } from '@/src/types';
 
 type LeaderboardScope = 'global' | 'friends';
 
+// Calculate personal bests from local runs
+function getLocalPersonalBests(runs: ReturnType<typeof useHistoryStore.getState>['runs']): PersonalBestsType {
+  const bests: PersonalBestsType = {
+    zero_to_sixty: null,
+    zero_to_hundred: null,
+    quarter_mile: null,
+    half_mile: null,
+  };
+
+  for (const run of runs) {
+    if (run.milestones.zeroToSixty?.time != null) {
+      if (bests.zero_to_sixty === null || run.milestones.zeroToSixty.time < bests.zero_to_sixty) {
+        bests.zero_to_sixty = run.milestones.zeroToSixty.time;
+      }
+    }
+    if (run.milestones.zeroToHundred?.time != null) {
+      if (bests.zero_to_hundred === null || run.milestones.zeroToHundred.time < bests.zero_to_hundred) {
+        bests.zero_to_hundred = run.milestones.zeroToHundred.time;
+      }
+    }
+    if (run.milestones.quarterMile?.time != null) {
+      if (bests.quarter_mile === null || run.milestones.quarterMile.time < bests.quarter_mile) {
+        bests.quarter_mile = run.milestones.quarterMile.time;
+      }
+    }
+    if (run.milestones.halfMile?.time != null) {
+      if (bests.half_mile === null || run.milestones.halfMile.time < bests.half_mile) {
+        bests.half_mile = run.milestones.halfMile.time;
+      }
+    }
+  }
+
+  return bests;
+}
+
+// Merge cloud and local bests, taking the best (lowest) time for each
+function mergeBests(cloud: PersonalBestsType, local: PersonalBestsType): PersonalBestsType {
+  const pickBest = (a: number | null, b: number | null): number | null => {
+    if (a === null) return b;
+    if (b === null) return a;
+    return Math.min(a, b);
+  };
+
+  return {
+    zero_to_sixty: pickBest(cloud.zero_to_sixty, local.zero_to_sixty),
+    zero_to_hundred: pickBest(cloud.zero_to_hundred, local.zero_to_hundred),
+    quarter_mile: pickBest(cloud.quarter_mile, local.quarter_mile),
+    half_mile: pickBest(cloud.half_mile, local.half_mile),
+  };
+}
+
 export default function LeaderboardScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const colors = Colors[isDark ? 'dark' : 'light'];
 
   const { user } = useAuthStore();
+  const localRuns = useHistoryStore((state) => state.runs);
 
   const [category, setCategory] = useState<LeaderboardCategory>('zero_to_sixty');
   const [scope, setScope] = useState<LeaderboardScope>('global');
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [personalBests, setPersonalBests] = useState<PersonalBestsType>({
+  const [cloudBests, setCloudBests] = useState<PersonalBestsType>({
     zero_to_sixty: null,
     zero_to_hundred: null,
     quarter_mile: null,
     half_mile: null,
   });
   const [isLoadingBests, setIsLoadingBests] = useState(true);
+
+  // Calculate local bests from history store
+  const localBests = useMemo(() => getLocalPersonalBests(localRuns), [localRuns]);
+
+  // Merge cloud and local bests
+  const personalBests = useMemo(
+    () => mergeBests(cloudBests, localBests),
+    [cloudBests, localBests]
+  );
 
   const fetchPersonalBests = useCallback(async () => {
     if (!user) {
@@ -53,9 +115,9 @@ export default function LeaderboardScreen() {
     setIsLoadingBests(true);
     try {
       const bests = await getPersonalBests();
-      setPersonalBests(bests);
+      setCloudBests(bests);
     } catch {
-      // Silently fail - personal bests are optional
+      // Silently fail - we still have local bests
     } finally {
       setIsLoadingBests(false);
     }
@@ -184,10 +246,11 @@ export default function LeaderboardScreen() {
             entries.length === 0 && styles.emptyListContent,
           ]}
           ListHeaderComponent={
-            user ? (
+            // Show if user is logged in OR has local runs with any bests
+            (user || localRuns.length > 0) ? (
               <PersonalBests
                 bests={personalBests}
-                isLoading={isLoadingBests}
+                isLoading={isLoadingBests && !localRuns.length}
                 isDark={isDark}
               />
             ) : null

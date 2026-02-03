@@ -34,9 +34,12 @@ export type VehicleUpgrade =
   | 'nitrous'
   | 'fuel_system';
 
+export type VehicleType = 'car' | 'motorcycle' | 'other';
+
 export interface Vehicle {
   id: string;
   name: string;
+  type: VehicleType;
   year: number;
   make: string;
   model: string;

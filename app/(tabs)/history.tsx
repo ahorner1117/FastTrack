@@ -15,6 +15,7 @@ import { History, Trash2, X, CheckSquare, Square } from 'lucide-react-native';
 import { RunCard } from '../../src/components/History';
 import { useHistoryStore } from '../../src/stores/historyStore';
 import { useSettingsStore } from '../../src/stores/settingsStore';
+import { useVehicleStore } from '../../src/stores/vehicleStore';
 import { COLORS } from '../../src/utils/constants';
 import type { Run } from '../../src/types';
 
@@ -23,6 +24,14 @@ export default function HistoryScreen() {
   const runs = useHistoryStore((state) => state.runs);
   const deleteRuns = useHistoryStore((state) => state.deleteRuns);
   const unitSystem = useSettingsStore((state) => state.unitSystem);
+  const getVehicleById = useVehicleStore((state) => state.getVehicleById);
+
+  const getVehicleName = useCallback((vehicleId: string | null) => {
+    if (!vehicleId) return undefined;
+    const vehicle = getVehicleById(vehicleId);
+    if (!vehicle) return undefined;
+    return vehicle.name || `${vehicle.year} ${vehicle.make} ${vehicle.model}`;
+  }, [getVehicleById]);
 
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -173,6 +182,7 @@ export default function HistoryScreen() {
             isSelecting={isSelecting}
             isSelected={selectedIds.has(item.id)}
             onToggleSelect={() => toggleSelectRun(item.id)}
+            vehicleName={getVehicleName(item.vehicleId)}
           />
         )}
         contentContainerStyle={styles.listContent}

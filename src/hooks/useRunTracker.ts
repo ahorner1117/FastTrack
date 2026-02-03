@@ -46,6 +46,7 @@ export function useRunTracker() {
     autoSaveRuns,
     launchDetectionThresholdG,
     launchDetectionSampleCount,
+    defaultVehicleId,
   } = useSettingsStore();
   const addRun = useHistoryStore((state) => state.addRun);
 
@@ -325,7 +326,7 @@ export function useRunTracker() {
           if (state.startTime && state.gpsPoints.length > 0) {
             const completedRun: Run = {
               id: `run_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-              vehicleId: null,
+              vehicleId: defaultVehicleId,
               startTime: state.startTime,
               endTime: Date.now(),
               milestones: state.milestones,

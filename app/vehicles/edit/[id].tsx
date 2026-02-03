@@ -5,7 +5,7 @@ import { useColorScheme } from '@/components/useColorScheme';
 import { VehicleForm } from '@/src/components/Garage';
 import { useVehicleStore } from '@/src/stores/vehicleStore';
 import { pickImage } from '@/src/utils/imagePicker';
-import type { VehicleUpgrade } from '@/src/types';
+import type { VehicleUpgrade, VehicleType } from '@/src/types';
 
 export default function EditVehicleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -37,6 +37,7 @@ export default function EditVehicleScreen() {
   };
 
   const handleSubmit = (data: {
+    type: VehicleType;
     year: string;
     make: string;
     model: string;
@@ -53,6 +54,7 @@ export default function EditVehicleScreen() {
 
     updateVehicle(id, {
       name: `${data.year} ${data.make} ${data.model}`,
+      type: data.type,
       year,
       make: data.make.trim(),
       model: data.model.trim(),
@@ -73,6 +75,7 @@ export default function EditVehicleScreen() {
       />
       <VehicleForm
         initialData={{
+          type: vehicle.type ?? 'car',
           year: vehicle.year.toString(),
           make: vehicle.make,
           model: vehicle.model,
