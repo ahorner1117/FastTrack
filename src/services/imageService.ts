@@ -15,26 +15,10 @@ export interface ImageUploadError {
   message: string;
 }
 
-async function getImageManipulator() {
-  try {
-    return await import('expo-image-manipulator');
-  } catch {
-    return null;
-  }
-}
-
 export async function compressImage(uri: string): Promise<string> {
-  const ImageManipulator = await getImageManipulator();
-  if (!ImageManipulator) {
-    // Return original if manipulator not available
-    return uri;
-  }
-  const result = await ImageManipulator.manipulateAsync(
-    uri,
-    [{ resize: { width: TARGET_SIZE } }],
-    { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
-  );
-  return result.uri;
+  // Skip compression - requires native rebuild
+  // To enable: npx expo prebuild --clean && npx expo run:ios
+  return uri;
 }
 
 export async function getFileSize(uri: string): Promise<number> {
