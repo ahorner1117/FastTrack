@@ -13,6 +13,8 @@ export default {
     surface: COLORS.light.surface,
     border: COLORS.light.border,
     textSecondary: COLORS.light.textSecondary,
+    error: COLORS.light.error,
+    surfaceElevated: COLORS.light.surfaceElevated,
   },
   dark: {
     text: COLORS.dark.text,
@@ -23,5 +25,7 @@ export default {
     surface: COLORS.dark.surface,
     border: COLORS.dark.border,
     textSecondary: COLORS.dark.textSecondary,
+    error: COLORS.dark.error,
+    surfaceElevated: COLORS.dark.surfaceElevated,
   },
 };

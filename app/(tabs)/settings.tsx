@@ -6,13 +6,17 @@ import {
   ScrollView,
   TouchableOpacity,
   Pressable,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronDown, Check } from 'lucide-react-native';
+import { ChevronDown, Check, LogOut, User } from 'lucide-react-native';
 
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
+import { COLORS } from '@/src/utils/constants';
 import { useSettingsStore } from '@/src/stores/settingsStore';
+import { useAuthStore } from '@/src/stores/authStore';
+import { signOut } from '@/src/services/authService';
 import { Toggle } from '@/src/components/common/Toggle';
 import { Card } from '@/src/components/common/Card';
 import type { UnitSystem, Appearance, GPSAccuracy } from '@/src/types';
@@ -215,6 +219,8 @@ export default function SettingsScreen() {
   const isDark = colorScheme === 'dark';
   const colors = Colors[isDark ? 'dark' : 'light'];
 
+  const { user, profile } = useAuthStore();
+
   const {
     unitSystem,
     appearance,
@@ -232,11 +238,60 @@ export default function SettingsScreen() {
     setLaunchDetectionSampleCount,
   } = useSettingsStore();
 
+  const handleSignOut = () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await signOut();
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'Failed to sign out');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
       contentContainerStyle={styles.contentContainer}
     >
+      <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+        ACCOUNT
+      </Text>
+      <Card isDark={isDark}>
+        <View style={styles.accountRow}>
+          <View style={[styles.avatar, { backgroundColor: COLORS.accent }]}>
+            <User color="#000000" size={24} />
+          </View>
+          <View style={styles.accountInfo}>
+            <Text style={[styles.accountName, { color: colors.text }]}>
+              {profile?.display_name || 'FastTrack User'}
+            </Text>
+            <Text style={[styles.accountEmail, { color: colors.textSecondary }]}>
+              {user?.email}
+            </Text>
+          </View>
+        </View>
+
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+        <TouchableOpacity style={styles.signOutRow} onPress={handleSignOut}>
+          <LogOut color={colors.error} size={20} />
+          <Text style={[styles.signOutText, { color: colors.error }]}>
+            Sign Out
+          </Text>
+        </TouchableOpacity>
+      </Card>
+
       <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
         UNITS
       </Text>
@@ -460,5 +515,38 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 12,
     marginTop: 32,
+  },
+  accountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  accountInfo: {
+    flex: 1,
+  },
+  accountName: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  accountEmail: {
+    fontSize: 13,
+  },
+  signOutRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 4,
+  },
+  signOutText: {
+    fontSize: 16,
+    fontWeight: '500',
   },
 });

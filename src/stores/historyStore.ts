@@ -4,11 +4,17 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Run } from '../types';
 import { STORAGE_KEYS } from '../utils/constants';
 
+// Extend Run type with sync tracking
+export interface StoredRun extends Run {
+  syncedAt?: number;
+}
+
 interface HistoryState {
-  runs: Run[];
+  runs: StoredRun[];
   addRun: (run: Run) => void;
   deleteRun: (id: string) => void;
-  getRunById: (id: string) => Run | undefined;
+  getRunById: (id: string) => StoredRun | undefined;
+  markRunSynced: (id: string) => void;
   clearHistory: () => void;
 }
 
@@ -19,7 +25,7 @@ export const useHistoryStore = create<HistoryState>()(
 
       addRun: (run) =>
         set((state) => ({
-          runs: [run, ...state.runs],
+          runs: [{ ...run, syncedAt: undefined }, ...state.runs],
         })),
 
       deleteRun: (id) =>
@@ -31,6 +37,13 @@ export const useHistoryStore = create<HistoryState>()(
         const { runs } = get();
         return runs.find((run) => run.id === id);
       },
+
+      markRunSynced: (id) =>
+        set((state) => ({
+          runs: state.runs.map((run) =>
+            run.id === id ? { ...run, syncedAt: Date.now() } : run
+          ),
+        })),
 
       clearHistory: () => set({ runs: [] }),
     }),

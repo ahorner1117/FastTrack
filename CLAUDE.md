@@ -4,67 +4,57 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-FastTrack is a free iOS application for timing vehicle acceleration with millisecond precision. It measures 0-60 mph, 0-100 mph, quarter-mile, and half-mile runs using GPS and motion sensors.
-
-**Status:** Specification phase - see SPECIFICATION.md for complete technical design.
-
-## Technology Stack
-
-- **Framework:** React Native 0.76+ with TypeScript
-- **Navigation:** React Navigation 7 (Expo Router)
-- **State:** Zustand
-- **Database:** WatermelonDB (local), Supabase (cloud sync)
-- **GPS/Sensors:** react-native-location + expo-sensors
-- **Auth:** Supabase Auth (email, Apple Sign-In)
-- **Icons:** lucide-react-native (no emojis)
-- **Animations:** React Native Reanimated 3
+FastTrack is an iOS app for timing vehicle acceleration with millisecond precision. It measures 0-60 mph, 0-100 mph, quarter-mile, and half-mile runs using GPS and accelerometer-based launch detection.
 
 ## Build Commands
 
 ```bash
-npm install                    # Install dependencies
-npm start                      # Start Metro bundler
-npm run ios                    # Run on iOS simulator
-npm run lint                   # Run ESLint
-npm run test                   # Run Jest tests
-npm run test -- --watch        # Watch mode
-npm run test -- path/to/file   # Single test file
-eas build --platform ios       # Production iOS build
+npm install          # Install dependencies
+npm start            # Start Metro bundler
+npm run ios          # Run on iOS simulator (requires Xcode)
+npx tsc --noEmit     # TypeScript type check
 ```
 
 ## Architecture
 
 ```
+app/                 # Expo Router screens
+├── (tabs)/          # Tab navigation: index (Timer), garage, history, settings
+├── history/         # Run detail screens
+└── vehicles/        # Vehicle CRUD screens
+
 src/
-├── app/              # Expo Router screens and navigation
-│   ├── (tabs)/       # Tab navigation (Timer, Garage, History, Settings)
-│   ├── (auth)/       # Authentication screens
-│   └── (vehicles)/   # Vehicle CRUD screens
-├── components/       # React components by feature
-├── hooks/            # Custom hooks (useLocation, useTimer, useRunTracker)
-├── stores/           # Zustand stores (settings, run, history, vehicle)
-├── services/         # Business logic (GPS, calculations, storage, sync)
-├── models/           # TypeScript interfaces and WatermelonDB models
-└── utils/            # Helpers (conversions, formatting, constants)
+├── components/      # Feature-organized components (Timer/, Garage/, History/)
+├── hooks/           # useLocation, useAccelerometer, useRunTracker
+├── stores/          # Zustand stores with AsyncStorage persistence
+├── services/        # locationService (distance calculations)
+├── types/           # TypeScript interfaces
+└── utils/           # constants, formatters, conversions
 ```
 
-## Key Patterns
+## Core Data Flow
 
-- **Offline-first:** WatermelonDB for local persistence, Supabase for optional cloud sync
-- **Hook abstraction:** GPS and sensors wrapped in custom hooks with accuracy monitoring
-- **Store-based state:** Zustand stores for settings, active run, history, and vehicles
-- **Service layer:** Business logic separated from UI (locationService, calculationService, syncService)
+1. **Timer screen** uses `useRunTracker` hook which orchestrates everything
+2. **useLocation** provides GPS data with accuracy gating
+3. **useAccelerometer** detects launch via G-force threshold (calibrates baseline, then detects sustained acceleration)
+4. When armed: accelerometer monitors for launch → triggers run start → GPS tracks milestones
 
-## Data Models
+## State Management
 
-- **Run:** Timing data linked to optional vehicle, includes all milestone times and speeds
-- **Vehicle:** User's garage entries with name, year/make/model, photo, notes
-- **Settings:** Units (imperial/metric), GPS accuracy threshold, default vehicle
+Zustand stores with AsyncStorage persistence:
+- `settingsStore`: Units, GPS accuracy, launch detection config (thresholdG, sampleCount)
+- `runStore`: Active run state (status, speed, distance, milestones, GPS points)
+- `historyStore`: Saved runs with launch config
+- `vehicleStore`: User's garage
+
+## Key Constants
+
+Speeds stored internally in m/s, distances in meters. Thresholds defined in `src/utils/constants.ts`:
+- 60 mph = 26.8224 m/s
+- Quarter mile = 402.336 m
 
 ## Important Conventions
 
-- All icons from Lucide, no emojis
-- Store speeds internally in m/s, convert for display based on unit preference
-- GPS updates at 10Hz during active runs, accuracy-gated
-- Vehicle selection required before timing (nullable for legacy compatibility)
-- Dark-first UI design for in-vehicle use
+- All icons from lucide-react-native, no emojis
+- Dark-first UI using `COLORS.dark.*` from constants
+- Launch detection: configurable G-force threshold (0.1-0.5G) and sample count (1-4 samples at 100Hz)

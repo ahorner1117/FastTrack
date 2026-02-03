@@ -1,0 +1,191 @@
+import { supabase } from '../lib/supabase';
+import type { Profile, Friendship, FriendshipStatus } from '../types';
+
+export interface MatchedContact {
+  profile: Profile;
+  contactName: string;
+}
+
+export async function findUsersFromPhoneHashes(
+  phoneHashes: string[]
+): Promise<Profile[]> {
+  if (phoneHashes.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .in('phone_hash', phoneHashes);
+
+  if (error) {
+    console.error('Error finding users:', error);
+    throw error;
+  }
+
+  return data || [];
+}
+
+export async function sendFriendRequest(friendId: string): Promise<Friendship> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error('Not authenticated');
+  }
+
+  // Check if friendship already exists
+  const { data: existing } = await supabase
+    .from('friendships')
+    .select('*')
+    .or(
+      `and(user_id.eq.${user.id},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${user.id})`
+    )
+    .single();
+
+  if (existing) {
+    throw new Error('Friend request already exists');
+  }
+
+  const { data, error } = await supabase
+    .from('friendships')
+    .insert({
+      user_id: user.id,
+      friend_id: friendId,
+      status: 'pending',
+    })
+    .select()
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+export async function respondToFriendRequest(
+  friendshipId: string,
+  status: 'accepted' | 'rejected'
+): Promise<Friendship> {
+  const { data, error } = await supabase
+    .from('friendships')
+    .update({ status })
+    .eq('id', friendshipId)
+    .select()
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+export async function removeFriend(friendshipId: string): Promise<void> {
+  const { error } = await supabase
+    .from('friendships')
+    .delete()
+    .eq('id', friendshipId);
+
+  if (error) {
+    throw error;
+  }
+}
+
+export async function getFriends(): Promise<Friendship[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error('Not authenticated');
+  }
+
+  // Get accepted friendships where user is either the requester or recipient
+  const { data, error } = await supabase
+    .from('friendships')
+    .select(
+      `
+      *,
+      friend_profile:profiles!friendships_friend_id_fkey(*),
+      user_profile:profiles!friendships_user_id_fkey(*)
+    `
+    )
+    .eq('status', 'accepted')
+    .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`);
+
+  if (error) {
+    throw error;
+  }
+
+  return data || [];
+}
+
+export async function getPendingFriendRequests(): Promise<Friendship[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error('Not authenticated');
+  }
+
+  // Get pending requests where user is the recipient (friend_id)
+  const { data, error } = await supabase
+    .from('friendships')
+    .select(
+      `
+      *,
+      user_profile:profiles!friendships_user_id_fkey(*)
+    `
+    )
+    .eq('status', 'pending')
+    .eq('friend_id', user.id);
+
+  if (error) {
+    throw error;
+  }
+
+  return data || [];
+}
+
+export async function getSentFriendRequests(): Promise<Friendship[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error('Not authenticated');
+  }
+
+  // Get pending requests where user is the sender (user_id)
+  const { data, error } = await supabase
+    .from('friendships')
+    .select(
+      `
+      *,
+      friend_profile:profiles!friendships_friend_id_fkey(*)
+    `
+    )
+    .eq('status', 'pending')
+    .eq('user_id', user.id);
+
+  if (error) {
+    throw error;
+  }
+
+  return data || [];
+}
+
+export async function getFriendIds(): Promise<string[]> {
+  const friends = await getFriends();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return [];
+
+  return friends.map((f) =>
+    f.user_id === user.id ? f.friend_id : f.user_id
+  );
+}

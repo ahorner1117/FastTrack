@@ -88,3 +88,56 @@ export interface TimerState {
   maxSpeed: number; // m/s
   gpsPoints: GPSPoint[];
 }
+
+// Auth & Social Types
+
+export interface Profile {
+  id: string;
+  email: string;
+  display_name: string | null;
+  phone_hash: string | null;
+  avatar_url: string | null;
+  created_at: string;
+}
+
+export type FriendshipStatus = 'pending' | 'accepted' | 'rejected';
+
+export interface Friendship {
+  id: string;
+  user_id: string;
+  friend_id: string;
+  status: FriendshipStatus;
+  created_at: string;
+  // Joined profile data (when fetching)
+  friend_profile?: Profile;
+  user_profile?: Profile;
+}
+
+export interface CloudRun {
+  id: string;
+  user_id: string;
+  local_id: string;
+  vehicle_name: string | null;
+  zero_to_sixty_time: number | null;
+  zero_to_hundred_time: number | null;
+  quarter_mile_time: number | null;
+  half_mile_time: number | null;
+  max_speed: number;
+  created_at: string;
+}
+
+export type LeaderboardCategory =
+  | 'zero_to_sixty'
+  | 'zero_to_hundred'
+  | 'quarter_mile'
+  | 'half_mile';
+
+export interface LeaderboardEntry {
+  rank: number;
+  user_id: string;
+  display_name: string;
+  avatar_url: string | null;
+  time: number;
+  vehicle_name: string | null;
+  is_friend: boolean;
+}
