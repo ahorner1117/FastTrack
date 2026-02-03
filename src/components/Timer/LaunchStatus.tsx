@@ -15,12 +15,14 @@ interface LaunchStatusProps {
   status: TimerState['status'];
   currentAcceleration: number;
   isAccelerometerAvailable: boolean;
+  isTooFastToStart?: boolean;
 }
 
 export function LaunchStatus({
   status,
   currentAcceleration,
   isAccelerometerAvailable,
+  isTooFastToStart = false,
 }: LaunchStatusProps) {
   const opacity = useSharedValue(1);
 
@@ -53,10 +55,13 @@ export function LaunchStatus({
       case 'idle':
         return 'Acquiring GPS signal...';
       case 'ready':
-        return 'Preparing sensors...';
+        return 'GPS ready - tap ARM when ready';
       case 'armed':
         if (!isAccelerometerAvailable) {
           return 'Accelerometer unavailable';
+        }
+        if (isTooFastToStart) {
+          return 'Slow down to start - must be below 3 mph';
         }
         return 'Accelerate to start timer';
       case 'running':
@@ -81,18 +86,21 @@ export function LaunchStatus({
 
   if (!message) return null;
 
+  const isWarning = status === 'armed' && isTooFastToStart;
+
   return (
     <View style={styles.container}>
       <Animated.Text
         style={[
           styles.message,
-          status === 'armed' && styles.armedMessage,
+          status === 'armed' && !isWarning && styles.armedMessage,
+          isWarning && styles.warningMessage,
           animatedStyle,
         ]}
       >
         {message}
       </Animated.Text>
-      {subMessage && (
+      {subMessage && !isWarning && (
         <Text style={styles.subMessage}>{subMessage}</Text>
       )}
     </View>
@@ -113,6 +121,11 @@ const styles = StyleSheet.create({
     color: COLORS.accent,
     fontSize: 16,
     fontWeight: '600',
+  },
+  warningMessage: {
+    color: COLORS.dark.warning,
+    fontSize: 14,
+    fontWeight: '500',
   },
   subMessage: {
     fontSize: 12,

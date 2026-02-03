@@ -72,6 +72,17 @@ export function useRunTracker() {
     const location = currentLocation;
     if (!location) return;
 
+    // Speed gate: only start if below max start speed (prevents rolling starts)
+    const currentSpeedMs = Math.max(0, location.speed ?? 0);
+    const maxStartSpeed = unitSystem === 'imperial'
+      ? SPEED_THRESHOLDS.MAX_START_SPEED_MPH
+      : SPEED_THRESHOLDS.MAX_START_SPEED_KPH;
+
+    if (currentSpeedMs > maxStartSpeed) {
+      // Too fast - ignore this launch detection
+      return;
+    }
+
     // Record start point
     startPointRef.current = {
       lat: location.latitude,
@@ -106,7 +117,7 @@ export function useRunTracker() {
         setElapsedTime(Date.now() - startTime);
       }
     }, TIMER_UPDATE_INTERVAL_MS);
-  }, [currentLocation, hapticFeedback, start, addGpsPoint, setElapsedTime]);
+  }, [currentLocation, hapticFeedback, unitSystem, start, addGpsPoint, setElapsedTime]);
 
   // Accelerometer for launch detection - only active when armed
   const { isAvailable: isAccelerometerAvailable, isMonitoring: isAccelerometerMonitoring, currentAcceleration } = useAccelerometer({
@@ -127,21 +138,18 @@ export function useRunTracker() {
     };
   }, [startTracking, stopTracking]);
 
-  // Auto-arm when GPS is ready (no manual START required)
+  // Transition to ready when GPS is good (user must manually arm)
   useEffect(() => {
     if (status === 'idle' && isTracking && isAccuracyOk) {
       setStatus('ready');
     } else if (status === 'ready' && (!isTracking || !isAccuracyOk)) {
       setStatus('idle');
     }
-    // Auto-transition from ready to armed when GPS is good
-    if (status === 'ready' && isTracking && isAccuracyOk) {
-      arm();
-      if (hapticFeedback && Haptics) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
+    // If armed but GPS becomes bad, go back to idle
+    if (status === 'armed' && (!isTracking || !isAccuracyOk)) {
+      setStatus('idle');
     }
-  }, [status, isTracking, isAccuracyOk, setStatus, arm, hapticFeedback]);
+  }, [status, isTracking, isAccuracyOk, setStatus]);
 
   // Process GPS updates during running state (launch detection handled by accelerometer)
   useEffect(() => {
@@ -279,6 +287,14 @@ export function useRunTracker() {
 
   const handleButtonPress = useCallback(() => {
     switch (status) {
+      case 'ready':
+        // User manually arms the accelerometer
+        arm();
+        if (hapticFeedback && Haptics) {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        }
+        break;
+
       case 'armed':
         // Cancel armed state and stop listening for launch
         if (timerRef.current) {
@@ -349,6 +365,12 @@ export function useRunTracker() {
     }
   }, [status, hapticFeedback, autoSaveRuns, addRun, arm, stop, reset, setStatus, isAccuracyOk, launchDetectionThresholdG, launchDetectionSampleCount]);
 
+  // Check if current speed is too fast to start a run
+  const maxStartSpeed = unitSystem === 'imperial'
+    ? SPEED_THRESHOLDS.MAX_START_SPEED_MPH
+    : SPEED_THRESHOLDS.MAX_START_SPEED_KPH;
+  const isTooFastToStart = currentSpeed > maxStartSpeed;
+
   return {
     // State
     status,
@@ -370,6 +392,9 @@ export function useRunTracker() {
     isAccelerometerAvailable,
     isAccelerometerMonitoring,
     currentAcceleration,
+
+    // Speed gate
+    isTooFastToStart,
 
     // Actions
     handleButtonPress,

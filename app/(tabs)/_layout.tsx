@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { Timer, Warehouse, Trophy, Users, Settings } from 'lucide-react-native';
+import { Timer, Warehouse, History, Trophy, Users, Settings } from 'lucide-react-native';
 
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
@@ -42,6 +42,13 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="history"
+        options={{
+          title: 'History',
+          tabBarIcon: ({ color, size }) => <History color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
         name="leaderboard"
         options={{
           title: 'Leaderboard',
@@ -62,12 +69,6 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => (
             <Settings color={color} size={size} />
           ),
-        }}
-      />
-      <Tabs.Screen
-        name="history"
-        options={{
-          href: null,
         }}
       />
     </Tabs>

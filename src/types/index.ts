@@ -89,6 +89,20 @@ export interface TimerState {
   gpsPoints: GPSPoint[];
 }
 
+export type TimerMode = 'acceleration' | 'drive';
+
+export interface Drive {
+  id: string;
+  vehicleId: string | null;
+  startTime: number;
+  endTime: number;
+  distance: number; // meters
+  maxSpeed: number; // m/s
+  avgSpeed: number; // m/s
+  gpsPoints: GPSPoint[];
+  createdAt: number;
+}
+
 // Auth & Social Types
 
 export interface Profile {

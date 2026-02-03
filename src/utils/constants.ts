@@ -7,6 +7,7 @@ export const COLORS = {
   dark: {
     background: '#000000',
     surface: '#1A1A1A',
+    surfaceHighlight: '#2A2A2A',
     surfaceElevated: '#262626',
     text: '#FFFFFF',
     textSecondary: '#A0A0A0',
@@ -38,6 +39,9 @@ export const SPEED_THRESHOLDS = {
   HUNDRED_MPH: 44.704, // 100 mph in m/s
   SIXTY_KPH: 16.6667, // 60 km/h in m/s
   HUNDRED_KPH: 27.7778, // 100 km/h in m/s
+  // Speed gate for acceleration timing - must be below this to start
+  MAX_START_SPEED_MPH: 1.34112, // 3 mph in m/s
+  MAX_START_SPEED_KPH: 1.38889, // 5 km/h in m/s
 } as const;
 
 // Distance thresholds in meters

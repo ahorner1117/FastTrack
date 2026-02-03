@@ -6,3 +6,6 @@ export { StartButton } from './StartButton';
 export { StatsFooter } from './StatsFooter';
 export { LocationMap } from './LocationMap';
 export { LaunchStatus } from './LaunchStatus';
+export { ModeSelector } from './ModeSelector';
+export { DriveStats } from './DriveStats';
+export { DriveButton } from './DriveButton';

@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
-import { ChevronRight, Gauge, Timer, Activity } from 'lucide-react-native';
+import { ChevronRight, Gauge, Timer, Activity, Circle, CheckCircle2 } from 'lucide-react-native';
 import type { Run, UnitSystem } from '../../types';
 import { COLORS } from '../../utils/constants';
 import {
@@ -13,9 +13,12 @@ interface RunCardProps {
   run: Run;
   unitSystem: UnitSystem;
   onPress: () => void;
+  isSelecting?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: () => void;
 }
 
-export function RunCard({ run, unitSystem, onPress }: RunCardProps) {
+export function RunCard({ run, unitSystem, onPress, isSelecting, isSelected, onToggleSelect }: RunCardProps) {
   // Get the best milestone to display
   const getBestMilestone = () => {
     const { milestones } = run;
@@ -48,12 +51,30 @@ export function RunCard({ run, unitSystem, onPress }: RunCardProps) {
 
   const bestMilestone = getBestMilestone();
 
+  const handlePress = () => {
+    if (isSelecting && onToggleSelect) {
+      onToggleSelect();
+    } else {
+      onPress();
+    }
+  };
+
   return (
     <TouchableOpacity
-      style={styles.container}
-      onPress={onPress}
+      style={[styles.container, isSelected && styles.containerSelected]}
+      onPress={handlePress}
+      onLongPress={onToggleSelect}
       activeOpacity={0.7}
     >
+      {isSelecting && (
+        <View style={styles.checkbox}>
+          {isSelected ? (
+            <CheckCircle2 color={COLORS.accent} size={24} />
+          ) : (
+            <Circle color={COLORS.dark.textTertiary} size={24} />
+          )}
+        </View>
+      )}
       <View style={styles.content}>
         <View style={styles.header}>
           <Text style={styles.date}>{formatRelativeDate(run.createdAt)}</Text>
@@ -104,6 +125,14 @@ const styles = StyleSheet.create({
     padding: 16,
     marginHorizontal: 16,
     marginVertical: 6,
+  },
+  containerSelected: {
+    backgroundColor: COLORS.dark.surfaceHighlight,
+    borderWidth: 1,
+    borderColor: COLORS.accent,
+  },
+  checkbox: {
+    marginRight: 12,
   },
   content: {
     flex: 1,

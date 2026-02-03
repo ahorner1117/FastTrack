@@ -88,12 +88,12 @@ export function StartButton({
           disabled: true,
         };
       case 'ready':
-        // Brief transition state - auto-arms when GPS is ready
+        // GPS is ready - user can arm the accelerometer
         return {
-          text: 'Preparing...',
-          backgroundColor: COLORS.dark.surface,
-          textColor: COLORS.dark.textSecondary,
-          disabled: true,
+          text: 'ARM',
+          backgroundColor: COLORS.accentDim,
+          textColor: '#000000',
+          disabled: false,
         };
       case 'armed':
         // Ready for automatic launch detection
