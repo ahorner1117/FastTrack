@@ -160,6 +160,21 @@ function RootLayoutNav() {
             headerShown: false,
           }}
         />
+        <Stack.Screen
+          name="posts/create"
+          options={{
+            headerShown: true,
+            title: 'New Post',
+            presentation: 'modal',
+          }}
+        />
+        <Stack.Screen
+          name="posts/[id]"
+          options={{
+            headerShown: true,
+            headerBackTitle: 'Explore',
+          }}
+        />
       </Stack>
     </ThemeProvider>
   );

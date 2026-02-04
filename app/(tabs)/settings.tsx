@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { Check, ChevronDown, ChevronRight, LogOut, Phone, Shield, User } from 'lucide-react-native';
+import { Check, ChevronDown, ChevronRight, LogOut, Phone, Shield, User, Camera } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
   Alert,
@@ -10,7 +10,10 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
@@ -18,6 +21,7 @@ import { Card } from '@/src/components/common/Card';
 import { Toggle } from '@/src/components/common/Toggle';
 import { signOut, updateProfile, getProfile } from '@/src/services/authService';
 import { hashPhoneNumber } from '@/src/services/contactsService';
+import { uploadAvatar, deleteAvatar } from '@/src/services/avatarService';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useSettingsStore } from '@/src/stores/settingsStore';
 import type { Appearance, GPSAccuracy, UnitSystem } from '@/src/types';
@@ -238,6 +242,95 @@ export default function SettingsScreen() {
 
   const [phoneNumber, setPhoneNumber] = useState('');
   const [isSavingPhone, setIsSavingPhone] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+
+  const handlePickAvatar = async () => {
+    Alert.alert('Profile Photo', 'Choose an option', [
+      {
+        text: 'Take Photo',
+        onPress: async () => {
+          const { status } = await ImagePicker.requestCameraPermissionsAsync();
+          if (status !== 'granted') {
+            Alert.alert('Permission Required', 'Camera access is needed to take photos.');
+            return;
+          }
+          const result = await ImagePicker.launchCameraAsync({
+            mediaTypes: 'images',
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.7,
+          });
+          if (!result.canceled && result.assets[0]) {
+            await handleUploadAvatar(result.assets[0].uri);
+          }
+        },
+      },
+      {
+        text: 'Choose from Library',
+        onPress: async () => {
+          const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: 'images',
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.7,
+          });
+          if (!result.canceled && result.assets[0]) {
+            await handleUploadAvatar(result.assets[0].uri);
+          }
+        },
+      },
+      ...(profile?.avatar_url
+        ? [
+            {
+              text: 'Remove Photo',
+              style: 'destructive' as const,
+              onPress: handleRemoveAvatar,
+            },
+          ]
+        : []),
+      { text: 'Cancel', style: 'cancel' as const },
+    ]);
+  };
+
+  const handleUploadAvatar = async (uri: string) => {
+    if (!user) return;
+
+    setIsUploadingAvatar(true);
+    try {
+      const { url, error } = await uploadAvatar(uri);
+      if (error) {
+        Alert.alert('Error', error.message);
+        return;
+      }
+      if (url) {
+        const updatedProfile = await getProfile(user.id);
+        setProfile(updatedProfile);
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to upload photo');
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    if (!user) return;
+
+    setIsUploadingAvatar(true);
+    try {
+      const success = await deleteAvatar();
+      if (success) {
+        const updatedProfile = await getProfile(user.id);
+        setProfile(updatedProfile);
+      } else {
+        Alert.alert('Error', 'Failed to remove photo');
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to remove photo');
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
 
   const handleSavePhoneNumber = async () => {
     if (!user || !phoneNumber.trim()) return;
@@ -305,9 +398,29 @@ export default function SettingsScreen() {
       </Text>
       <Card isDark={isDark}>
         <View style={styles.accountRow}>
-          <View style={[styles.avatar, { backgroundColor: COLORS.accent }]}>
-            <User color="#000000" size={24} />
-          </View>
+          <Pressable onPress={handlePickAvatar} disabled={isUploadingAvatar}>
+            <View style={[styles.avatarContainer]}>
+              {profile?.avatar_url ? (
+                <Image
+                  source={{ uri: profile.avatar_url }}
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <View style={[styles.avatar, { backgroundColor: COLORS.accent }]}>
+                  <User color="#000000" size={24} />
+                </View>
+              )}
+              {isUploadingAvatar ? (
+                <View style={styles.avatarOverlay}>
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                </View>
+              ) : (
+                <View style={styles.avatarBadge}>
+                  <Camera color="#FFFFFF" size={12} />
+                </View>
+              )}
+            </View>
+          </Pressable>
           <View style={styles.accountInfo}>
             <Text style={[styles.accountName, { color: colors.text }]}>
               {profile?.display_name || 'FastTrack User'}
@@ -632,13 +745,45 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  avatarContainer: {
+    position: 'relative',
+    marginRight: 12,
+  },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+  },
+  avatarImage: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+  },
+  avatarOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 28,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: COLORS.accent,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#000000',
   },
   accountInfo: {
     flex: 1,

@@ -159,3 +159,37 @@ export interface LeaderboardEntry {
   vehicle_name: string | null;
   is_friend: boolean;
 }
+
+// Social/Posts Types
+export interface Post {
+  id: string;
+  user_id: string;
+  image_url: string;
+  caption: string | null;
+  vehicle_id: string | null;
+  run_id: string | null;
+  likes_count: number;
+  comments_count: number;
+  created_at: string;
+  updated_at: string;
+  // Joined data
+  profile?: Profile;
+  run?: { zero_to_sixty_time: number | null; vehicle_name: string | null } | null;
+  is_liked?: boolean;
+}
+
+export interface PostComment {
+  id: string;
+  post_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  profile?: Profile;
+}
+
+export interface CreatePostInput {
+  image_url: string;
+  caption?: string;
+  vehicle_id?: string;
+  run_id?: string;
+}

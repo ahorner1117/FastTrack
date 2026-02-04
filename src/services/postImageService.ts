@@ -1,9 +1,9 @@
 import { supabase } from '../lib/supabase';
 import { decode } from 'base64-arraybuffer';
 import { readAsStringAsync, EncodingType } from 'expo-file-system/legacy';
-import { compressImage, getFileSize } from '../utils/imageCompression';
+import { compressPostImage, getFileSize } from '../utils/imageCompression';
 
-const VEHICLE_IMAGES_BUCKET = 'vehicle-images';
+const POST_IMAGES_BUCKET = 'post-images';
 const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024; // 15MB
 
 export interface ImageUploadError {
@@ -11,11 +11,9 @@ export interface ImageUploadError {
   message: string;
 }
 
-export { compressImage, getFileSize };
-
-export async function uploadVehicleImage(
+export async function uploadPostImage(
   localUri: string,
-  vehicleId: string
+  postId: string
 ): Promise<{ url: string | null; error: ImageUploadError | null }> {
   const {
     data: { user },
@@ -30,15 +28,11 @@ export async function uploadVehicleImage(
 
   try {
     // Compress the image
-    const compressedUri = await compressImage(localUri, {
-      maxWidth: 1200,
-      maxHeight: 1200,
-      quality: 0.8,
-    });
+    const compressedUri = await compressPostImage(localUri);
 
-    // Verify final size
-    const finalSize = await getFileSize(compressedUri);
-    if (finalSize > MAX_FILE_SIZE_BYTES) {
+    // Check file size after compression
+    const fileSize = await getFileSize(compressedUri);
+    if (fileSize > MAX_FILE_SIZE_BYTES) {
       return {
         url: null,
         error: {
@@ -54,17 +48,17 @@ export async function uploadVehicleImage(
     });
 
     // Always use jpg after compression
-    const fileName = `${user.id}/${vehicleId}.jpg`;
+    const fileName = `${user.id}/${postId}.jpg`;
 
     const { data, error } = await supabase.storage
-      .from(VEHICLE_IMAGES_BUCKET)
+      .from(POST_IMAGES_BUCKET)
       .upload(fileName, decode(base64), {
         contentType: 'image/jpeg',
         upsert: true,
       });
 
     if (error) {
-      console.error('Error uploading image:', error);
+      console.error('Error uploading post image:', error);
       return {
         url: null,
         error: { type: 'upload_failed', message: error.message },
@@ -74,11 +68,11 @@ export async function uploadVehicleImage(
     // Get public URL
     const {
       data: { publicUrl },
-    } = supabase.storage.from(VEHICLE_IMAGES_BUCKET).getPublicUrl(data.path);
+    } = supabase.storage.from(POST_IMAGES_BUCKET).getPublicUrl(data.path);
 
     return { url: publicUrl, error: null };
   } catch (error) {
-    console.error('Failed to upload vehicle image:', error);
+    console.error('Failed to upload post image:', error);
     return {
       url: null,
       error: {
@@ -89,7 +83,7 @@ export async function uploadVehicleImage(
   }
 }
 
-export async function deleteVehicleImage(vehicleId: string): Promise<boolean> {
+export async function deletePostImage(postId: string): Promise<boolean> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -101,25 +95,20 @@ export async function deleteVehicleImage(vehicleId: string): Promise<boolean> {
   try {
     // Try to delete common image extensions
     const extensions = ['jpg', 'jpeg', 'png', 'heic', 'webp'];
-    const filePaths = extensions.map((ext) => `${user.id}/${vehicleId}.${ext}`);
+    const filePaths = extensions.map((ext) => `${user.id}/${postId}.${ext}`);
 
     const { error } = await supabase.storage
-      .from(VEHICLE_IMAGES_BUCKET)
+      .from(POST_IMAGES_BUCKET)
       .remove(filePaths);
 
     if (error) {
-      console.error('Error deleting image:', error);
+      console.error('Error deleting post image:', error);
       return false;
     }
 
     return true;
   } catch (error) {
-    console.error('Failed to delete vehicle image:', error);
+    console.error('Failed to delete post image:', error);
     return false;
   }
-}
-
-export function isSupabaseUrl(uri: string | undefined): boolean {
-  if (!uri) return false;
-  return uri.includes('supabase');
 }
