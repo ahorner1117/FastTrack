@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { Timer, Warehouse, History, Compass, Trophy, Users, Settings } from 'lucide-react-native';
+import { Timer, Warehouse, Compass, Trophy, Users, Settings } from 'lucide-react-native';
 
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
@@ -44,8 +44,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="history"
         options={{
-          title: 'History',
-          tabBarIcon: ({ color, size }) => <History color={color} size={size} />,
+          href: null, // Hide from tab bar
         }}
       />
       <Tabs.Screen
