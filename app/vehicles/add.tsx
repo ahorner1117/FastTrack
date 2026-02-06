@@ -9,6 +9,7 @@ import {
   uploadVehicleImage,
   isSupabaseUrl,
 } from '@/src/services/imageService';
+import { syncVehicleToCloud } from '@/src/services/syncService';
 import type { VehicleUpgrade, VehicleType } from '@/src/types';
 
 export default function AddVehicleScreen() {
@@ -85,6 +86,9 @@ export default function AddVehicleScreen() {
     };
 
     addVehicle(vehicle);
+    syncVehicleToCloud(vehicle).catch((err) =>
+      console.error('Failed to sync new vehicle:', err)
+    );
     setIsSubmitting(false);
     router.back();
   };

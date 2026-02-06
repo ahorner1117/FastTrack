@@ -16,6 +16,7 @@ interface HistoryState {
   deleteRuns: (ids: string[]) => void;
   getRunById: (id: string) => StoredRun | undefined;
   markRunSynced: (id: string) => void;
+  setRuns: (runs: StoredRun[]) => void;
   clearHistory: () => void;
 }
 
@@ -50,6 +51,8 @@ export const useHistoryStore = create<HistoryState>()(
             run.id === id ? { ...run, syncedAt: Date.now() } : run
           ),
         })),
+
+      setRuns: (runs) => set({ runs }),
 
       clearHistory: () => set({ runs: [] }),
     }),

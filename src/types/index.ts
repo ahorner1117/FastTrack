@@ -144,6 +144,22 @@ export interface CloudRun {
   created_at: string;
 }
 
+export interface CloudVehicle {
+  id: string;
+  user_id: string;
+  local_id: string;
+  name: string;
+  type: string;
+  year: number;
+  make: string;
+  model: string;
+  photo_uri: string | null;
+  upgrades: string[];
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export type LeaderboardCategory =
   | 'zero_to_sixty'
   | 'zero_to_hundred'

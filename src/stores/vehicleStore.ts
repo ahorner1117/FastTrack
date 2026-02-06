@@ -10,6 +10,7 @@ interface VehicleState {
   updateVehicle: (id: string, updates: Partial<Omit<Vehicle, 'id' | 'createdAt'>>) => void;
   deleteVehicle: (id: string) => void;
   getVehicleById: (id: string) => Vehicle | undefined;
+  setVehicles: (vehicles: Vehicle[]) => void;
   reset: () => void;
 }
 
@@ -41,6 +42,8 @@ export const useVehicleStore = create<VehicleState>()(
         const { vehicles } = get();
         return vehicles.find((vehicle) => vehicle.id === id);
       },
+
+      setVehicles: (vehicles) => set({ vehicles }),
 
       reset: () => set({ vehicles: [] }),
     }),

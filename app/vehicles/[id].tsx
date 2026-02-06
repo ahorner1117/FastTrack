@@ -13,6 +13,7 @@ import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
 import { VehicleImage } from '@/src/components/Garage';
 import { useVehicleStore } from '@/src/stores/vehicleStore';
+import { deleteVehicleFromCloud } from '@/src/services/syncService';
 import { COLORS, VEHICLE_UPGRADES, VEHICLE_TYPES } from '@/src/utils/constants';
 
 export default function VehicleDetailScreen() {
@@ -50,6 +51,9 @@ export default function VehicleDetailScreen() {
           style: 'destructive',
           onPress: () => {
             deleteVehicle(id);
+            deleteVehicleFromCloud(id).catch((err) =>
+              console.error('Failed to delete vehicle from cloud:', err)
+            );
             router.back();
           },
         },

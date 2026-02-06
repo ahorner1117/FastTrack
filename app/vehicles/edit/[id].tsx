@@ -9,6 +9,7 @@ import {
   uploadVehicleImage,
   isSupabaseUrl,
 } from '@/src/services/imageService';
+import { syncVehicleToCloud } from '@/src/services/syncService';
 import type { VehicleUpgrade, VehicleType } from '@/src/types';
 
 export default function EditVehicleScreen() {
@@ -88,6 +89,14 @@ export default function EditVehicleScreen() {
       upgrades: data.upgrades,
       notes: data.notes.trim() || undefined,
     });
+
+    // Sync updated vehicle to cloud
+    const updatedVehicle = useVehicleStore.getState().getVehicleById(id);
+    if (updatedVehicle) {
+      syncVehicleToCloud(updatedVehicle).catch((err) =>
+        console.error('Failed to sync updated vehicle:', err)
+      );
+    }
 
     setIsSubmitting(false);
     router.back();

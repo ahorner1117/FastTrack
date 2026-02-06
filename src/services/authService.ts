@@ -7,7 +7,12 @@ import { useSettingsStore } from '../stores/settingsStore';
 import { useRunStore } from '../stores/runStore';
 import { useFriendsStore } from '../stores/friendsStore';
 import { useFeedStore } from '../stores/feedStore';
-import { syncAllUnsyncedRuns } from './syncService';
+import {
+  syncAllUnsyncedRuns,
+  syncAllVehicles,
+  fetchVehiclesFromCloud,
+  fetchRunsFromCloud,
+} from './syncService';
 import { STORAGE_KEYS } from '../utils/constants';
 import type { Profile } from '../types';
 
@@ -139,9 +144,9 @@ export async function initializeAuth() {
       const profile = await getProfile(session.user.id);
       setProfile(profile);
 
-      // Sync any unsynced runs in background
-      syncAllUnsyncedRuns().catch((error) => {
-        console.error('Failed to sync runs on init:', error);
+      // Restore data from cloud and sync any local changes in background
+      restoreAndSync().catch((error) => {
+        console.error('Failed to restore/sync on init:', error);
       });
     }
 
@@ -166,6 +171,11 @@ export async function initializeAuth() {
             STORAGE_KEYS.VEHICLES,
             STORAGE_KEYS.RUNS,
           ]);
+
+          // Restore user's data from cloud after clearing stale data
+          restoreAndSync().catch((error) => {
+            console.error('Failed to restore data on sign in:', error);
+          });
         }
       } else {
         setProfile(null);
@@ -176,4 +186,22 @@ export async function initializeAuth() {
   } finally {
     setIsLoading(false);
   }
+}
+
+async function restoreAndSync() {
+  // 1. Restore vehicles from cloud first (runs need vehicles for matching)
+  const cloudVehicles = await fetchVehiclesFromCloud();
+  if (cloudVehicles.length > 0) {
+    useVehicleStore.getState().setVehicles(cloudVehicles);
+  }
+
+  // 2. Restore runs from cloud (matches vehicle names to local vehicle IDs)
+  const cloudRuns = await fetchRunsFromCloud();
+  if (cloudRuns.length > 0) {
+    useHistoryStore.getState().setRuns(cloudRuns);
+  }
+
+  // 3. Push any local-only data up to cloud
+  await syncAllVehicles();
+  await syncAllUnsyncedRuns();
 }

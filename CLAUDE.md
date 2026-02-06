@@ -47,6 +47,21 @@ Zustand stores with AsyncStorage persistence:
 - `historyStore`: Saved runs with launch config
 - `vehicleStore`: User's garage
 
+## Data Persistence
+
+**CRITICAL: All user data must be stored in Supabase.**
+
+- **Runs**: Synced to `runs` table (bidirectional: push local changes, restore from cloud on login)
+- **Vehicles**: Synced to `vehicles` table (bidirectional: individual CRUD operations sync to cloud)
+- **Settings**: Local only (device-specific preferences)
+- **Authentication**: Required for all cloud sync operations via `authService.ts`
+- **Sync flow**: On login, `restoreAndSync()` fetches vehicles then runs from cloud, then pushes local changes
+- **Cloud operations**: Individual vehicle add/update/delete operations sync immediately from component files in `app/vehicles/`
+
+Services:
+- `src/services/syncService.ts` - All cloud sync for runs and vehicles
+- `src/services/authService.ts` - Authentication and `restoreAndSync()` on login
+
 ## Key Constants
 
 Speeds stored internally in m/s, distances in meters. Thresholds defined in `src/utils/constants.ts`:
@@ -55,6 +70,10 @@ Speeds stored internally in m/s, distances in meters. Thresholds defined in `src
 
 ## Important Conventions
 
+- **Data persistence**: All user data (runs, vehicles) MUST be stored in Supabase, not just locally
+- **Column naming**: Cloud table columns use snake_case; local TypeScript types use camelCase
+- **Vehicle format**: Vehicle name in runs table follows "{year} {make} {model}" format
+- **Cloud sync**: Fire-and-forget from components with `.catch()` error handling
 - All icons from lucide-react-native, no emojis
 - Dark-first UI using `COLORS.dark.*` from constants
 - Launch detection: configurable G-force threshold (0.1-0.5G) and sample count (1-4 samples at 100Hz)
