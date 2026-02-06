@@ -146,6 +146,28 @@ export async function fetchRunsFromCloud(): Promise<StoredRun[]> {
   });
 }
 
+export async function deleteRunsFromCloud(runLocalIds: string[]): Promise<void> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    console.log('Cannot delete runs: user not authenticated');
+    return;
+  }
+
+  const { error } = await supabase
+    .from('runs')
+    .delete()
+    .eq('user_id', user.id)
+    .in('local_id', runLocalIds);
+
+  if (error) {
+    console.error('Error deleting runs from cloud:', error);
+    throw error;
+  }
+}
+
 // ─── Vehicle Sync (NEW) ─────────────────────────────────────────────
 
 export async function syncVehicleToCloud(vehicle: Vehicle): Promise<void> {

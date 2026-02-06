@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Run } from '../types';
 import { STORAGE_KEYS } from '../utils/constants';
+import { deleteRunsFromCloud } from '../services/syncService';
 
 // Extend Run type with sync tracking
 export interface StoredRun extends Run {
@@ -30,15 +31,25 @@ export const useHistoryStore = create<HistoryState>()(
           runs: [{ ...run, syncedAt: undefined }, ...state.runs],
         })),
 
-      deleteRun: (id) =>
+      deleteRun: (id) => {
         set((state) => ({
           runs: state.runs.filter((run) => run.id !== id),
-        })),
+        }));
+        // Delete from cloud (fire-and-forget)
+        deleteRunsFromCloud([id]).catch((error) => {
+          console.error('Failed to delete run from cloud:', error);
+        });
+      },
 
-      deleteRuns: (ids) =>
+      deleteRuns: (ids) => {
         set((state) => ({
           runs: state.runs.filter((run) => !ids.includes(run.id)),
-        })),
+        }));
+        // Delete from cloud (fire-and-forget)
+        deleteRunsFromCloud(ids).catch((error) => {
+          console.error('Failed to delete runs from cloud:', error);
+        });
+      },
 
       getRunById: (id) => {
         const { runs } = get();
