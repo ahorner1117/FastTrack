@@ -1,6 +1,14 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../stores/authStore';
+import { useVehicleStore } from '../stores/vehicleStore';
+import { useHistoryStore } from '../stores/historyStore';
+import { useSettingsStore } from '../stores/settingsStore';
+import { useRunStore } from '../stores/runStore';
+import { useFriendsStore } from '../stores/friendsStore';
+import { useFeedStore } from '../stores/feedStore';
 import { syncAllUnsyncedRuns } from './syncService';
+import { STORAGE_KEYS } from '../utils/constants';
 import type { Profile } from '../types';
 
 interface SignUpParams {
@@ -65,7 +73,21 @@ export async function signOut() {
     throw error;
   }
 
+  // Reset all stores to prevent data leaking between accounts
   useAuthStore.getState().reset();
+  useVehicleStore.getState().reset();
+  useHistoryStore.getState().clearHistory();
+  useSettingsStore.getState().resetToDefaults();
+  useRunStore.getState().reset();
+  useFriendsStore.getState().reset();
+  useFeedStore.getState().reset();
+
+  // Clear persisted data from AsyncStorage
+  await AsyncStorage.multiRemove([
+    STORAGE_KEYS.VEHICLES,
+    STORAGE_KEYS.RUNS,
+    STORAGE_KEYS.SETTINGS,
+  ]);
 }
 
 export async function getProfile(userId: string): Promise<Profile | null> {
@@ -131,11 +153,19 @@ export async function initializeAuth() {
         const profile = await getProfile(session.user.id);
         setProfile(profile);
 
-        // Sync any unsynced runs when user signs in
         if (event === 'SIGNED_IN') {
-          syncAllUnsyncedRuns().catch((error) => {
-            console.error('Failed to sync runs on sign in:', error);
-          });
+          // Clear any stale local data from a previous account before syncing.
+          // This prevents the previous user's unsynced runs from being
+          // uploaded to the new user's account.
+          useVehicleStore.getState().reset();
+          useHistoryStore.getState().clearHistory();
+          useRunStore.getState().reset();
+          useFriendsStore.getState().reset();
+          useFeedStore.getState().reset();
+          await AsyncStorage.multiRemove([
+            STORAGE_KEYS.VEHICLES,
+            STORAGE_KEYS.RUNS,
+          ]);
         }
       } else {
         setProfile(null);
