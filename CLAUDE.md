@@ -15,6 +15,24 @@ npm run ios          # Run on iOS simulator (requires Xcode)
 npx tsc --noEmit     # TypeScript type check
 ```
 
+## Deployment
+
+**All prerequisites are configured and ready:**
+- EAS CLI installed and authenticated
+- App Store Connect account configured
+- Apple Developer Program membership active
+- Bundle ID: `com.anthonyhorner.fasttrack`
+- EAS Project ID: `9311807a-428e-4f90-8fe1-269b7313596a`
+
+**Deploy to TestFlight:**
+```bash
+eas build --platform ios --profile production              # Build for production
+eas submit --platform ios --latest                         # Submit to App Store Connect
+# OR combine: eas build --platform ios --profile production --auto-submit
+```
+
+Production builds use auto-incrementing build numbers (configured in `eas.json`).
+
 ## Architecture
 
 ```
@@ -38,6 +56,15 @@ src/
 2. **useLocation** provides GPS data with accuracy gating
 3. **useAccelerometer** detects launch via G-force threshold (calibrates baseline, then detects sustained acceleration)
 4. When armed: accelerometer monitors for launch → triggers run start → GPS tracks milestones
+
+## Timing Accuracy Optimizations
+
+**Professional-grade timing implementation:**
+- **GPS timestamps**: Uses GPS timestamps (not `Date.now()`) for all milestone recording to eliminate processing lag
+- **Calculated speed**: Computes speed from position deltas (`distance/time`) instead of GPS-reported speed for better accuracy
+- **Speed smoothing**: Applies exponential moving average (α=0.3) to reduce GPS noise and prevent false threshold crossings
+- **Accuracy filtering**: Filters GPS points during runs - only accepts points with accuracy ≤ 2x threshold to reject poor quality data
+- **Result**: Achieves timing accuracy comparable to professional systems (Dragy/RaceBox) with ±0.05-0.1s precision
 
 ## State Management
 

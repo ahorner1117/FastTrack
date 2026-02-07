@@ -18,7 +18,7 @@ interface RunStoreState extends TimerState {
     milestone: RunMilestone
   ) => void;
   arm: () => void;
-  start: () => void;
+  start: (gpsTimestamp: number) => void;
   stop: () => void;
   reset: () => void;
 }
@@ -83,10 +83,10 @@ export const useRunStore = create<RunStoreState>()((set, get) => ({
       gpsPoints: [],
     }),
 
-  start: () =>
+  start: (gpsTimestamp) =>
     set({
       status: 'running',
-      startTime: Date.now(),
+      startTime: gpsTimestamp,
     }),
 
   stop: () =>

@@ -14,6 +14,7 @@ import {
   SPEED_THRESHOLDS,
   DISTANCE_THRESHOLDS,
   TIMER_UPDATE_INTERVAL_MS,
+  GPS_ACCURACY_THRESHOLDS,
 } from '../utils/constants';
 import type { GPSPoint, Run, RunMilestone } from '../types';
 
@@ -64,8 +65,10 @@ export function useRunTracker() {
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startPointRef = useRef<{ lat: number; lon: number } | null>(null);
-  const lastPointRef = useRef<{ lat: number; lon: number } | null>(null);
+  const lastPointRef = useRef<{ lat: number; lon: number; timestamp: number } | null>(null);
   const totalDistanceRef = useRef(0);
+  const smoothedSpeedRef = useRef(0);
+  const SPEED_SMOOTHING_FACTOR = 0.3; // 0 = no smoothing, 1 = no history
 
   // Launch detection callback - called by accelerometer when launch is detected
   const handleLaunchDetected = useCallback(() => {
@@ -94,8 +97,10 @@ export function useRunTracker() {
     lastPointRef.current = {
       lat: location.latitude,
       lon: location.longitude,
+      timestamp: location.timestamp,
     };
     totalDistanceRef.current = 0;
+    smoothedSpeedRef.current = 0;
 
     const speed = Math.max(0, location.speed ?? 0);
     const gpsPoint: GPSPoint = {
@@ -106,7 +111,7 @@ export function useRunTracker() {
       timestamp: location.timestamp,
     };
 
-    start();
+    start(location.timestamp);
     addGpsPoint(gpsPoint);
 
     if (hapticFeedback && Haptics) {
@@ -158,16 +163,48 @@ export function useRunTracker() {
   useEffect(() => {
     if (!currentLocation) return;
 
-    const speed = Math.max(0, currentLocation.speed ?? 0);
-    setSpeed(speed);
+    // Calculate speed from position deltas for better accuracy (instead of GPS-reported speed)
+    let calculatedSpeed = Math.max(0, currentLocation.speed ?? 0);
+
+    if (status === 'running' && lastPointRef.current) {
+      const distance = calculateDistance(
+        lastPointRef.current.lat,
+        lastPointRef.current.lon,
+        currentLocation.latitude,
+        currentLocation.longitude
+      );
+      const timeDelta = (currentLocation.timestamp - lastPointRef.current.timestamp) / 1000; // seconds
+
+      if (timeDelta > 0 && timeDelta < 1) { // Sanity check: between 0 and 1 second
+        calculatedSpeed = distance / timeDelta; // m/s
+      }
+    }
+
+    // Apply exponential moving average for smoothing
+    const rawSpeed = calculatedSpeed;
+    smoothedSpeedRef.current =
+      smoothedSpeedRef.current * (1 - SPEED_SMOOTHING_FACTOR) +
+      rawSpeed * SPEED_SMOOTHING_FACTOR;
+
+    // Update display with raw speed (more responsive)
+    setSpeed(rawSpeed);
 
     // Only process detailed GPS tracking when running
     if (status === 'running') {
+      // GPS accuracy filtering - skip poor quality data during run
+      const accuracy = currentLocation.accuracy ?? 999;
+      const maxAcceptableAccuracy = GPS_ACCURACY_THRESHOLDS[gpsAccuracy] * 2;
+
+      if (accuracy > maxAcceptableAccuracy) {
+        console.warn(`Poor GPS accuracy during run: ${accuracy.toFixed(1)}m (threshold: ${maxAcceptableAccuracy}m) - skipping point`);
+        return; // Skip this GPS update
+      }
+
       const gpsPoint: GPSPoint = {
         latitude: currentLocation.latitude,
         longitude: currentLocation.longitude,
-        speed,
-        accuracy: currentLocation.accuracy ?? 999,
+        speed: rawSpeed,
+        accuracy,
         timestamp: currentLocation.timestamp,
       };
 
@@ -188,18 +225,19 @@ export function useRunTracker() {
       lastPointRef.current = {
         lat: currentLocation.latitude,
         lon: currentLocation.longitude,
+        timestamp: currentLocation.timestamp,
       };
 
-      // Check milestones
-      checkSpeedMilestones(speed, totalDistanceRef.current);
-      checkDistanceMilestones(speed, totalDistanceRef.current);
+      // Check milestones using smoothed speed and GPS timestamp for maximum accuracy
+      checkSpeedMilestones(smoothedSpeedRef.current, totalDistanceRef.current, currentLocation.timestamp);
+      checkDistanceMilestones(smoothedSpeedRef.current, totalDistanceRef.current, currentLocation.timestamp);
     }
-  }, [currentLocation, status]);
+  }, [currentLocation, status, gpsAccuracy]);
 
   const checkSpeedMilestones = useCallback(
-    (speed: number, distance: number) => {
-      const { milestones, elapsedTime, startTime } = useRunStore.getState();
-      const currentElapsed = startTime ? Date.now() - startTime : elapsedTime;
+    (speed: number, distance: number, gpsTimestamp: number) => {
+      const { milestones, startTime } = useRunStore.getState();
+      const currentElapsed = startTime ? gpsTimestamp - startTime : 0;
 
       // Check 0-60 (or 0-100 km/h)
       const sixtyThreshold =
@@ -243,9 +281,9 @@ export function useRunTracker() {
   );
 
   const checkDistanceMilestones = useCallback(
-    (speed: number, distance: number) => {
-      const { milestones, elapsedTime, startTime } = useRunStore.getState();
-      const currentElapsed = startTime ? Date.now() - startTime : elapsedTime;
+    (speed: number, distance: number, gpsTimestamp: number) => {
+      const { milestones, startTime } = useRunStore.getState();
+      const currentElapsed = startTime ? gpsTimestamp - startTime : 0;
 
       // Check quarter mile
       const quarterThreshold =
@@ -307,6 +345,7 @@ export function useRunTracker() {
         startPointRef.current = null;
         lastPointRef.current = null;
         totalDistanceRef.current = 0;
+        smoothedSpeedRef.current = 0;
         reset();
         // Go back to idle, will auto-arm again when GPS is ready
         setStatus('idle');
@@ -358,6 +397,7 @@ export function useRunTracker() {
         startPointRef.current = null;
         lastPointRef.current = null;
         totalDistanceRef.current = 0;
+        smoothedSpeedRef.current = 0;
         stop();
         if (hapticFeedback && Haptics) {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
@@ -370,6 +410,7 @@ export function useRunTracker() {
         startPointRef.current = null;
         lastPointRef.current = null;
         totalDistanceRef.current = 0;
+        smoothedSpeedRef.current = 0;
         if (isAccuracyOk) {
           setStatus('ready');
         } else {
