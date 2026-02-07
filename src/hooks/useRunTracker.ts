@@ -163,74 +163,56 @@ export function useRunTracker() {
   useEffect(() => {
     if (!currentLocation) return;
 
-    // Calculate speed from position deltas for better accuracy (instead of GPS-reported speed)
-    let calculatedSpeed = Math.max(0, currentLocation.speed ?? 0);
+    // Use GPS-reported speed (Doppler-derived, more accurate than position deltas)
+    const rawSpeed = Math.max(0, currentLocation.speed ?? 0);
 
-    if (status === 'running' && lastPointRef.current) {
-      const distance = calculateDistance(
-        lastPointRef.current.lat,
-        lastPointRef.current.lon,
-        currentLocation.latitude,
-        currentLocation.longitude
-      );
-      const timeDelta = (currentLocation.timestamp - lastPointRef.current.timestamp) / 1000; // seconds
-
-      if (timeDelta > 0 && timeDelta < 1) { // Sanity check: between 0 and 1 second
-        calculatedSpeed = distance / timeDelta; // m/s
-      }
-    }
-
-    // Apply exponential moving average for smoothing
-    const rawSpeed = calculatedSpeed;
+    // Apply smoothing for display only
     smoothedSpeedRef.current =
       smoothedSpeedRef.current * (1 - SPEED_SMOOTHING_FACTOR) +
       rawSpeed * SPEED_SMOOTHING_FACTOR;
 
-    // Update display with raw speed (more responsive)
     setSpeed(rawSpeed);
 
     // Only process detailed GPS tracking when running
     if (status === 'running') {
-      // GPS accuracy filtering - skip poor quality data during run
       const accuracy = currentLocation.accuracy ?? 999;
       const maxAcceptableAccuracy = GPS_ACCURACY_THRESHOLDS[gpsAccuracy] * 2;
+      const isGoodAccuracy = accuracy <= maxAcceptableAccuracy;
 
-      if (accuracy > maxAcceptableAccuracy) {
-        console.warn(`Poor GPS accuracy during run: ${accuracy.toFixed(1)}m (threshold: ${maxAcceptableAccuracy}m) - skipping point`);
-        return; // Skip this GPS update
+      // Record GPS point and distance only if accuracy is acceptable
+      if (isGoodAccuracy) {
+        const gpsPoint: GPSPoint = {
+          latitude: currentLocation.latitude,
+          longitude: currentLocation.longitude,
+          speed: rawSpeed,
+          accuracy,
+          timestamp: currentLocation.timestamp,
+        };
+
+        addGpsPoint(gpsPoint);
+
+        // Calculate distance from last point
+        if (lastPointRef.current) {
+          const segmentDistance = calculateDistance(
+            lastPointRef.current.lat,
+            lastPointRef.current.lon,
+            currentLocation.latitude,
+            currentLocation.longitude
+          );
+          totalDistanceRef.current += segmentDistance;
+          setDistance(totalDistanceRef.current);
+        }
+
+        lastPointRef.current = {
+          lat: currentLocation.latitude,
+          lon: currentLocation.longitude,
+          timestamp: currentLocation.timestamp,
+        };
       }
 
-      const gpsPoint: GPSPoint = {
-        latitude: currentLocation.latitude,
-        longitude: currentLocation.longitude,
-        speed: rawSpeed,
-        accuracy,
-        timestamp: currentLocation.timestamp,
-      };
-
-      addGpsPoint(gpsPoint);
-
-      // Calculate distance from last point
-      if (lastPointRef.current) {
-        const segmentDistance = calculateDistance(
-          lastPointRef.current.lat,
-          lastPointRef.current.lon,
-          currentLocation.latitude,
-          currentLocation.longitude
-        );
-        totalDistanceRef.current += segmentDistance;
-        setDistance(totalDistanceRef.current);
-      }
-
-      lastPointRef.current = {
-        lat: currentLocation.latitude,
-        lon: currentLocation.longitude,
-        timestamp: currentLocation.timestamp,
-      };
-
-      // Check milestones using smoothed speed and GPS timestamp for maximum accuracy
-      checkSpeedMilestones(smoothedSpeedRef.current, totalDistanceRef.current, currentLocation.timestamp);
-      checkDistanceMilestones(smoothedSpeedRef.current, totalDistanceRef.current, currentLocation.timestamp);
+      // Always check milestones using raw GPS speed (no smoothing lag)
+      checkSpeedMilestones(rawSpeed, totalDistanceRef.current, currentLocation.timestamp);
+      checkDistanceMilestones(rawSpeed, totalDistanceRef.current, currentLocation.timestamp);
     }
   }, [currentLocation, status, gpsAccuracy]);
 
