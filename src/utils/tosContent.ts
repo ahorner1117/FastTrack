@@ -7,118 +7,108 @@
 
 export const TOS_VERSION = '1.0';
 
-export const TOS_CONTENT = `
-FASTTRACK TERMS OF SERVICE
+export const TOS_CONTENT = `FASTTRACK RIDES
+TERMS OF SERVICE
 
+Effective Date: February 6, 2026
 Last Updated: February 6, 2026
-Version: ${TOS_VERSION}
 
-PLEASE READ THESE TERMS CAREFULLY BEFORE USING FASTTRACK.
+INTRODUCTION
 
-By using FastTrack, you agree to be bound by these Terms of Service. If you do not agree to these terms, do not use this application.
+Welcome to FastTrack Rides ("the App"), provided by FastTrack Rides, Inc. ("the Company," "we," "our," or "us"). The App is designed to measure and analyze vehicle performance metrics — including acceleration times (e.g., 0–60 mph, 0–100 mph), quarter-mile and half-mile times, and other driving performance data. It may also include drive tracking and historical performance features.
 
-1. TRACK USE DISCLAIMER
+By downloading, accessing, or using the App, you ("User," "you," or "your") agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, please do not access or use the App.
 
-FastTrack is intended for use ONLY on closed courses, private property, or sanctioned race tracks where such use is legal and permitted. This application is NOT intended for use on public roads or highways.
+ELIGIBILITY
 
-You acknowledge that using this application while operating a vehicle on public roads may:
-- Violate local, state, or federal traffic laws
-- Void vehicle warranties
-- Affect insurance coverage
-- Create safety hazards for yourself and others
+You must be at least 18 years old (or the age of legal majority in your jurisdiction) and capable of entering into a binding contract to use the App. By using the App, you confirm that you meet these requirements.
 
-2. USER RESPONSIBILITY
+USER RESPONSIBILITIES
 
-You are SOLELY responsible for:
-- Safe and legal operation of your vehicle at all times
-- Compliance with all applicable laws, regulations, and ordinances
-- Obtaining necessary permissions, permits, or waivers for vehicle performance testing
-- Ensuring your vehicle is in safe operating condition
-- Using appropriate safety equipment and precautions
-- Determining whether and where it is legal and safe to use this application
+You agree to use FastTrack Rides only for lawful and responsible purposes and in compliance with all applicable vehicle, traffic, and safety laws. Specifically:
 
-FastTrack does not encourage, endorse, or condone illegal street racing, reckless driving, or any violation of traffic laws.
+• You must not operate the App in a way that distracts you or impairs your ability to drive safely.
 
-3. ASSUMPTION OF RISK
+• You should only conduct performance testing in controlled, safe, and legal environments such as closed tracks or private roads.
 
-You acknowledge and agree that:
-- Vehicle performance testing carries inherent risks of injury, death, and property damage
-- GPS and sensor-based measurements may not be 100% accurate
-- You assume ALL risks associated with using this application
-- FastTrack provides data for informational purposes only
-- You will not rely solely on FastTrack data for safety-critical decisions
+• You acknowledge that all driving and testing activities are undertaken at your own risk.
 
-4. LIMITATION OF LIABILITY
+• Data and speed measurements provided by FastTrack Rides are for informational and entertainment purposes only and are not guaranteed to be precise for professional or legal use.
 
-TO THE MAXIMUM EXTENT PERMITTED BY LAW:
+• You are solely responsible for ensuring that your vehicle is in a safe and appropriate condition for testing.
 
-FastTrack and its developers, officers, employees, and affiliates SHALL NOT BE LIABLE for any:
-- Personal injury, death, or property damage arising from use of this application
-- Inaccurate measurements or data
-- Legal violations, fines, citations, or criminal charges resulting from app use
-- Lost data, device damage, or technical failures
-- Indirect, incidental, consequential, or punitive damages
+• Failure to follow applicable laws or safety guidelines may result in suspension or termination of your access to the App.
 
-The application is provided "AS IS" without warranty of any kind.
+LIABILITY DISCLAIMER
 
-5. INDEMNIFICATION
+IMPORTANT: PLEASE READ THIS SECTION CAREFULLY.
 
-You agree to INDEMNIFY, DEFEND, and HOLD HARMLESS FastTrack and its developers, officers, employees, and affiliates from any and all:
-- Claims, lawsuits, or legal actions
-- Damages, losses, costs, and expenses (including attorney fees)
-- Arising from or related to your use of this application
+To the fullest extent permitted by law, FastTrack Rides, Inc., its affiliates, officers, directors, employees, agents, and licensors will not be liable for any losses, damages, injuries, claims, or expenses — whether direct, indirect, incidental, consequential, or punitive — arising out of or in connection with:
 
-This includes, but is not limited to, claims arising from traffic violations, accidents, injuries, or property damage.
+• The use, misuse, or inability to use the App;
 
-6. NO WARRANTIES
+• Any accident, traffic violation, property damage, injury, or death occurring while using or as a result of using the App;
 
-FastTrack is provided WITHOUT WARRANTIES of any kind, either express or implied, including but not limited to:
-- Warranties of merchantability
-- Fitness for a particular purpose
-- Accuracy or reliability of measurements
-- Uninterrupted or error-free operation
-- Data security or privacy
+• Any reliance on or use of the App's data, including speed, acceleration, or performance metrics; or
 
-7. DATA ACCURACY
+• Errors, inaccuracies, or technical issues within the App.
 
-GPS and accelerometer-based measurements are subject to:
-- Environmental conditions (weather, satellite visibility, terrain)
-- Device hardware limitations and variations
-- Software processing delays and rounding
-- User configuration and calibration
+You acknowledge that performance testing inherently involves risk, including potential damage to property and personal injury. By using FastTrack Rides, you expressly agree to release, waive, and hold harmless the Company from any and all liability arising from or related to your use of the App.
 
-Measurements should be considered APPROXIMATE and may differ from professional timing equipment. Do not use FastTrack data for purposes requiring precise accuracy.
+Some jurisdictions may not allow the exclusion or limitation of certain types of damages. In those cases, FastTrack Rides' liability will be limited to the maximum extent permitted by law.
 
-8. LEGAL COMPLIANCE
+INDEMNIFICATION
 
-You agree to:
-- Comply with all local, state, federal, and international laws
-- Obtain necessary permissions before using the application
-- Use the application only in jurisdictions where such use is legal
-- Immediately discontinue use if it violates any applicable law
+You agree to indemnify and hold harmless FastTrack Rides, Inc., its affiliates, officers, employees, licensors, and agents from and against any and all losses, damages, claims, liabilities, expenses, or costs (including reasonable attorneys' fees) arising out of or related to:
 
-9. MODIFICATIONS
+• Your use or misuse of the App;
 
-FastTrack reserves the right to modify these Terms of Service at any time. Continued use of the application after changes constitutes acceptance of the modified terms.
+• Your violation of these Terms; or
 
-10. GOVERNING LAW
+• Your violation of any law, regulation, or third-party right.
 
-These terms shall be governed by and construed in accordance with applicable laws, without regard to conflict of law provisions.
+This obligation will survive the termination of these Terms and your use of the App.
 
-11. SEVERABILITY
+INTELLECTUAL PROPERTY
 
-If any provision of these terms is found to be unenforceable or invalid, that provision shall be limited or eliminated to the minimum extent necessary, and the remaining provisions shall remain in full force and effect.
+All content, features, and intellectual property of FastTrack Rides — including but not limited to software, graphics, text, trademarks, and logos — are owned or licensed by FastTrack Rides, Inc. and protected under applicable intellectual property laws.
 
-12. ENTIRE AGREEMENT
+You are granted a limited, non-exclusive, non-transferable, revocable license to use the App for personal, non-commercial purposes. You may not modify, reproduce, distribute, reverse-engineer, or create derivative works without prior written consent from the Company.
 
-These Terms of Service constitute the entire agreement between you and FastTrack regarding use of this application.
+PRIVACY
+
+Your use of FastTrack Rides is governed by our Privacy Policy, which outlines how we collect, use, and safeguard personal data. By using the App, you consent to the data practices described in that policy.
+
+SERVICE AVAILABILITY AND CHANGES
+
+FastTrack Rides reserves the right to modify, update, suspend, or discontinue the App (in whole or in part) at any time, with or without notice. The Company shall not be liable for any modification or discontinuation of the App or its features.
+
+TERMINATION
+
+FastTrack Rides may suspend or terminate your access at its sole discretion, without prior notice, if you violate these Terms, misuse the App, or engage in conduct that could harm the Company or other users.
+
+Upon termination, all rights granted to you under these Terms will immediately end.
+
+GOVERNING LAW
+
+These Terms shall be governed by and construed in accordance with the laws of the State of Florida, United States, without regard to conflict of law principles. You agree that any disputes or legal proceedings relating to these Terms shall be brought exclusively in the state or federal courts located in Palm Beach County, Florida.
+
+UPDATES TO TERMS
+
+FastTrack Rides may update these Terms from time to time. When updates occur, we will revise the "Last Updated" date above. Continued use of the App after such changes constitutes your acceptance of the updated Terms.
+
+CONTACT INFORMATION
+
+FastTrack Rides, Inc.
+Email: support@fasttrackrides.com
 
 ---
 
 BY CLICKING "I ACCEPT" BELOW, YOU ACKNOWLEDGE THAT:
-- You have read and understood these Terms of Service
-- You agree to be bound by these terms
-- You are at least 18 years of age or have parental/guardian consent
-- You will use FastTrack only on closed courses or private property where permitted
-- You assume all risks and legal responsibility for your use of this application
+• You have read and understood these Terms of Service
+• You agree to be bound by these Terms
+• You are at least 18 years of age (or the age of legal majority in your jurisdiction)
+• You will use FastTrack Rides responsibly and in compliance with all applicable laws
+• You understand and accept the risks associated with vehicle performance testing
+• You release FastTrack Rides, Inc. from all liability arising from your use of the App
 `;

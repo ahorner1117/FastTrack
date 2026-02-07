@@ -32,6 +32,13 @@ export const TermsOfServiceModal: React.FC<TermsOfServiceModalProps> = ({
 
   const isAcceptEnabled = hasScrolledToBottom && isChecked;
 
+  // Debug: Log content length
+  React.useEffect(() => {
+    if (visible) {
+      console.log('ToS Modal visible, content length:', TOS_CONTENT.length);
+    }
+  }, [visible]);
+
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
     const paddingToBottom = 20;
@@ -158,8 +165,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     width: '100%',
     maxWidth: 500,
-    maxHeight: SCREEN_HEIGHT * 0.8,
+    height: SCREEN_HEIGHT * 0.8,
     padding: 20,
+    flexDirection: 'column',
   },
   header: {
     marginBottom: 16,
@@ -177,6 +185,10 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: COLORS.dark.border,
+    borderRadius: 8,
+    padding: 12,
   },
   scrollContent: {
     paddingBottom: 20,
