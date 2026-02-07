@@ -116,6 +116,8 @@ export interface Profile {
   avatar_url: string | null;
   created_at: string;
   is_admin: boolean;
+  tos_accepted_at: string | null;
+  tos_version: string | null;
 }
 
 export type FriendshipStatus = 'pending' | 'accepted' | 'rejected';

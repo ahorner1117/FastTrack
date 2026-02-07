@@ -20,6 +20,8 @@ interface SignUpParams {
   email: string;
   password: string;
   displayName?: string;
+  tosAccepted?: boolean;
+  tosVersion?: string;
 }
 
 interface SignInParams {
@@ -27,7 +29,7 @@ interface SignInParams {
   password: string;
 }
 
-export async function signUp({ email, password, displayName }: SignUpParams) {
+export async function signUp({ email, password, displayName, tosAccepted, tosVersion }: SignUpParams) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -48,6 +50,8 @@ export async function signUp({ email, password, displayName }: SignUpParams) {
       id: data.user.id,
       email: data.user.email,
       display_name: displayName || null,
+      tos_accepted_at: tosAccepted ? new Date().toISOString() : null,
+      tos_version: tosVersion || null,
     });
 
     if (profileError) {

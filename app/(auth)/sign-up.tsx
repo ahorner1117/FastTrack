@@ -4,6 +4,8 @@ import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/components/useColorScheme';
 import { AuthForm } from '@/src/components/Auth';
 import { signUp } from '@/src/services/authService';
+import { TermsOfServiceModal } from '@/src/components/Auth/TermsOfServiceModal';
+import { TOS_VERSION } from '@/src/utils/tosContent';
 
 export default function SignUpScreen() {
   const router = useRouter();
@@ -15,8 +17,10 @@ export default function SignUpScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showToSModal, setShowToSModal] = useState(false);
 
   const handleSignUp = async () => {
+    // Validate form fields
     if (!email.trim()) {
       Alert.alert('Error', 'Please enter your email address');
       return;
@@ -37,6 +41,12 @@ export default function SignUpScreen() {
       return;
     }
 
+    // Show ToS modal for user acceptance
+    setShowToSModal(true);
+  };
+
+  const handleAcceptToS = async () => {
+    setShowToSModal(false);
     setIsLoading(true);
 
     try {
@@ -44,6 +54,8 @@ export default function SignUpScreen() {
         email: email.trim(),
         password,
         displayName: displayName.trim() || undefined,
+        tosAccepted: true,
+        tosVersion: TOS_VERSION,
       });
       Alert.alert(
         'Account Created',
@@ -65,25 +77,40 @@ export default function SignUpScreen() {
     }
   };
 
+  const handleDeclineToS = () => {
+    setShowToSModal(false);
+    Alert.alert(
+      'Terms Required',
+      'You must accept the Terms of Service to create an account.'
+    );
+  };
+
   const handleSwitchMode = () => {
     router.replace('/(auth)/sign-in' as any);
   };
 
   return (
-    <AuthForm
-      mode="sign-up"
-      email={email}
-      password={password}
-      confirmPassword={confirmPassword}
-      displayName={displayName}
-      onEmailChange={setEmail}
-      onPasswordChange={setPassword}
-      onConfirmPasswordChange={setConfirmPassword}
-      onDisplayNameChange={setDisplayName}
-      onSubmit={handleSignUp}
-      onSwitchMode={handleSwitchMode}
-      isLoading={isLoading}
-      isDark={isDark}
-    />
+    <>
+      <AuthForm
+        mode="sign-up"
+        email={email}
+        password={password}
+        confirmPassword={confirmPassword}
+        displayName={displayName}
+        onEmailChange={setEmail}
+        onPasswordChange={setPassword}
+        onConfirmPasswordChange={setConfirmPassword}
+        onDisplayNameChange={setDisplayName}
+        onSubmit={handleSignUp}
+        onSwitchMode={handleSwitchMode}
+        isLoading={isLoading}
+        isDark={isDark}
+      />
+      <TermsOfServiceModal
+        visible={showToSModal}
+        onAccept={handleAcceptToS}
+        onDecline={handleDeclineToS}
+      />
+    </>
   );
 }
