@@ -238,6 +238,49 @@ export function useRunTracker() {
         if (hapticFeedback && Haptics) {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
+
+        // Auto-save run when 60mph is hit (if auto-save is enabled)
+        if (autoSaveRuns) {
+          // Stop the timer
+          if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+          }
+
+          // Save run to history
+          const state = useRunStore.getState();
+          if (state.startTime && state.gpsPoints.length > 0) {
+            const completedRun: Run = {
+              id: `run_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              vehicleId: defaultVehicleId,
+              startTime: state.startTime,
+              endTime: gpsTimestamp,
+              milestones: state.milestones,
+              maxSpeed: state.maxSpeed,
+              gpsPoints: state.gpsPoints,
+              createdAt: Date.now(),
+              launchDetectionConfig: {
+                thresholdG: launchDetectionThresholdG,
+                sampleCount: launchDetectionSampleCount,
+              },
+            };
+            addRun(completedRun);
+
+            // Sync run to cloud in background
+            syncRunToCloud(completedRun)
+              .then((cloudRun) => {
+                if (cloudRun) {
+                  markRunSynced(completedRun.id);
+                }
+              })
+              .catch((error) => {
+                console.error('Failed to sync run to cloud:', error);
+              });
+          }
+
+          // Stop the run
+          stop();
+        }
       }
 
       // Check 0-100 (or 0-160 km/h)
@@ -259,7 +302,7 @@ export function useRunTracker() {
         }
       }
     },
-    [unitSystem, hapticFeedback, setMilestone]
+    [unitSystem, hapticFeedback, setMilestone, autoSaveRuns, defaultVehicleId, launchDetectionThresholdG, launchDetectionSampleCount, addRun, markRunSynced, stop]
   );
 
   const checkDistanceMilestones = useCallback(
@@ -312,6 +355,15 @@ export function useRunTracker() {
     switch (status) {
       case 'ready':
         // User manually arms the accelerometer
+        // Ensure any stale timer and refs are cleared before arming
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+        }
+        startPointRef.current = null;
+        lastPointRef.current = null;
+        totalDistanceRef.current = 0;
+        smoothedSpeedRef.current = 0;
         arm();
         if (hapticFeedback && Haptics) {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
