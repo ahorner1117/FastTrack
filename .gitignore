@@ -38,6 +38,9 @@ yarn-error.*
 # Claude Code
 CLAUDE.md
 
+# Supabase migrations
+supabase/migrations/
+
 # typescript
 *.tsbuildinfo
 
