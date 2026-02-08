@@ -5,20 +5,13 @@ import { Platform } from 'react-native';
 // Accelerometer update interval in ms (10ms = 100Hz for fast detection)
 const ACCELEROMETER_INTERVAL_MS = 10;
 
-// Default launch detection threshold in G-force (1G = 9.81 m/s²)
-// 0.25G is sensitive enough to catch quick starts but won't trigger from hand movement
-// A typical brisk car acceleration is 0.2-0.5G
-const DEFAULT_LAUNCH_THRESHOLD_G = 0.4;
+// Launch detection threshold in G-force (1G = 9.81 m/s²)
+// 0.3G is approximately the acceleration of a typical car launch
+const DEFAULT_LAUNCH_THRESHOLD_G = 0.3;
 
-// Default number of consecutive samples above threshold to confirm launch
-// At 100Hz, 2 samples = 20ms - filters brief impulses while still being responsive
-const DEFAULT_CONSECUTIVE_SAMPLES_REQUIRED = 4
-
-// Gravity constant
-const GRAVITY = 9.81;
-
-// UI update throttle (don't update React state on every sample)
-const UI_UPDATE_INTERVAL_MS = 100;
+// Number of consecutive samples above threshold to confirm launch
+// At 100Hz, 3 samples = 30ms of sustained acceleration
+const DEFAULT_CONSECUTIVE_SAMPLES_REQUIRED = 3;
 
 interface UseAccelerometerOptions {
   enabled: boolean;
@@ -49,9 +42,6 @@ export function useAccelerometer({
   const consecutiveCountRef = useRef(0);
   const launchDetectedRef = useRef(false);
   const onLaunchDetectedRef = useRef(onLaunchDetected);
-  const lastUIUpdateRef = useRef(0);
-  const baselineRef = useRef<{ x: number; y: number; z: number } | null>(null);
-  const calibrationSamplesRef = useRef<Array<{ x: number; y: number; z: number }>>([]);
 
   // Keep callback ref updated
   useEffect(() => {
@@ -72,8 +62,6 @@ export function useAccelerometer({
   const resetLaunchDetection = useCallback(() => {
     consecutiveCountRef.current = 0;
     launchDetectedRef.current = false;
-    baselineRef.current = null;
-    calibrationSamplesRef.current = [];
   }, []);
 
   // Start/stop monitoring based on enabled state
@@ -93,50 +81,21 @@ export function useAccelerometer({
 
     // Subscribe to accelerometer data
     subscriptionRef.current = Accelerometer.addListener((data) => {
-      const now = Date.now();
+      setRawData(data);
 
-      // Calibration phase: collect baseline samples when stationary
-      // This captures the phone's orientation and gravity vector
-      if (!baselineRef.current) {
-        calibrationSamplesRef.current.push({ x: data.x, y: data.y, z: data.z });
+      // Use Y-axis as forward acceleration (phone in portrait, screen facing driver)
+      // Y-axis directly measures forward/backward acceleration
+      // No calibration needed - gravity is on Z-axis in this orientation
+      const forwardAccelG = Math.abs(data.y);
+      setCurrentAcceleration(forwardAccelG);
 
-        // Collect 10 samples (100ms) for calibration
-        if (calibrationSamplesRef.current.length >= 10) {
-          const samples = calibrationSamplesRef.current;
-          baselineRef.current = {
-            x: samples.reduce((sum, s) => sum + s.x, 0) / samples.length,
-            y: samples.reduce((sum, s) => sum + s.y, 0) / samples.length,
-            z: samples.reduce((sum, s) => sum + s.z, 0) / samples.length,
-          };
-        }
-        return;
-      }
-
-      // Calculate acceleration delta from baseline (removes gravity effect)
-      // This works regardless of phone orientation
-      const deltaX = data.x - baselineRef.current.x;
-      const deltaY = data.y - baselineRef.current.y;
-      const deltaZ = data.z - baselineRef.current.z;
-
-      // Combined magnitude of acceleration change
-      const accelerationMagnitude = Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
-
-      // Throttle UI updates to avoid React overhead (but detection runs at full speed)
-      if (now - lastUIUpdateRef.current >= UI_UPDATE_INTERVAL_MS) {
-        setRawData(data);
-        setCurrentAcceleration(accelerationMagnitude);
-        lastUIUpdateRef.current = now;
-      }
-
-      // Launch detection logic - runs at full 100Hz
+      // Launch detection logic
       if (!launchDetectedRef.current) {
-        if (accelerationMagnitude >= launchThresholdG) {
+        if (forwardAccelG >= launchThresholdG) {
           consecutiveCountRef.current++;
 
           if (consecutiveCountRef.current >= consecutiveSamplesRequired) {
             launchDetectedRef.current = true;
-            // Update UI immediately on launch
-            setCurrentAcceleration(accelerationMagnitude);
             onLaunchDetectedRef.current();
           }
         } else {

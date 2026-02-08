@@ -1,8 +1,11 @@
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import { Check, ChevronDown, ChevronRight, LogOut, Phone, Shield, User, Camera } from 'lucide-react-native';
+import { Camera, Check, ChevronDown, ChevronRight, LogOut, Phone, Shield, User } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,18 +13,15 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  Image,
-  ActivityIndicator,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
 
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
 import { Card } from '@/src/components/common/Card';
 import { Toggle } from '@/src/components/common/Toggle';
-import { signOut, updateProfile, getProfile } from '@/src/services/authService';
+import { getProfile, signOut, updateProfile } from '@/src/services/authService';
+import { deleteAvatar, uploadAvatar } from '@/src/services/avatarService';
 import { hashPhoneNumber } from '@/src/services/contactsService';
-import { uploadAvatar, deleteAvatar } from '@/src/services/avatarService';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useSettingsStore } from '@/src/stores/settingsStore';
 import type { Appearance, GPSAccuracy, UnitSystem } from '@/src/types';
@@ -175,62 +175,63 @@ function Dropdown({ options, selectedValue, onSelect, isDark, zIndex = 1 }: Drop
         </TouchableOpacity>
 
         {isOpen && (
-        <ScrollView
-          style={[
-            styles.dropdownMenu,
-            {
-              backgroundColor: isDark ? '#262626' : '#FFFFFF',
-              borderColor: colors.border,
-              maxHeight: 300,
-            },
-          ]}
-          nestedScrollEnabled
-        >
-          {options.map((option) => {
-            const isSelected = option.value === selectedValue;
-            return (
-              <TouchableOpacity
-                key={option.value}
-                style={[
-                  styles.dropdownOption,
-                  { borderBottomColor: colors.border },
-                ]}
-                onPress={() => {
-                  onSelect(option.value);
-                  setIsOpen(false);
-                }}
-              >
-                <View style={styles.dropdownOptionContent}>
-                  <Text
-                    style={[
-                      styles.dropdownOptionText,
-                      { color: colors.text },
-                      isSelected && { color: colors.tint },
-                    ]}
-                  >
-                    {option.label}
-                  </Text>
-                  {option.description && (
+          <ScrollView
+            style={[
+              styles.dropdownMenu,
+              {
+                backgroundColor: isDark ? '#262626' : '#FFFFFF',
+                borderColor: colors.border,
+                maxHeight: 300,
+              },
+            ]}
+            nestedScrollEnabled
+          >
+            {options.map((option) => {
+              const isSelected = option.value === selectedValue;
+              return (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[
+                    styles.dropdownOption,
+                    { borderBottomColor: colors.border },
+                  ]}
+                  onPress={() => {
+                    onSelect(option.value);
+                    setIsOpen(false);
+                  }}
+                >
+                  <View style={styles.dropdownOptionContent}>
                     <Text
                       style={[
-                        styles.dropdownOptionDescription,
-                        { color: colors.textSecondary },
+                        styles.dropdownOptionText,
+                        { color: colors.text },
+                        isSelected && { color: colors.tint },
                       ]}
                     >
-                      {option.description}
+                      {option.label}
                     </Text>
-                  )}
-                </View>
-                {isSelected && <Check color={colors.tint} size={18} />}
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      )}
+                    {option.description && (
+                      <Text
+                        style={[
+                          styles.dropdownOptionDescription,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        {option.description}
+                      </Text>
+                    )}
+                  </View>
+                  {isSelected && <Check color={colors.tint} size={18} />}
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
       </View>
     </>
   );
 }
+
 
 export default function SettingsScreen() {
   const colorScheme = useColorScheme();
@@ -281,12 +282,12 @@ export default function SettingsScreen() {
       },
       ...(profile?.avatar_url
         ? [
-            {
-              text: 'Remove Photo',
-              style: 'destructive' as const,
-              onPress: handleRemoveAvatar,
-            },
-          ]
+          {
+            text: 'Remove Photo',
+            style: 'destructive' as const,
+            onPress: handleRemoveAvatar,
+          },
+        ]
         : []),
       { text: 'Cancel', style: 'cancel' as const },
     ]);
