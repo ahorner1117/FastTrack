@@ -13,6 +13,10 @@ const DEFAULT_LAUNCH_THRESHOLD_G = 0.3;
 // At 100Hz, 3 samples = 30ms of sustained acceleration
 const DEFAULT_CONSECUTIVE_SAMPLES_REQUIRED = 3;
 
+// Settle period after arming before launch detection activates (ms)
+// Prevents the button tap motion from triggering a false launch
+const SETTLE_PERIOD_MS = 500;
+
 interface UseAccelerometerOptions {
   enabled: boolean;
   launchThresholdG?: number;
@@ -41,6 +45,8 @@ export function useAccelerometer({
   const subscriptionRef = useRef<ReturnType<typeof Accelerometer.addListener> | null>(null);
   const consecutiveCountRef = useRef(0);
   const launchDetectedRef = useRef(false);
+  const settledRef = useRef(false);
+  const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onLaunchDetectedRef = useRef(onLaunchDetected);
 
   // Keep callback ref updated
@@ -62,6 +68,11 @@ export function useAccelerometer({
   const resetLaunchDetection = useCallback(() => {
     consecutiveCountRef.current = 0;
     launchDetectedRef.current = false;
+    settledRef.current = false;
+    if (settleTimerRef.current) {
+      clearTimeout(settleTimerRef.current);
+      settleTimerRef.current = null;
+    }
   }, []);
 
   // Start/stop monitoring based on enabled state
@@ -79,6 +90,15 @@ export function useAccelerometer({
     // Set update interval
     Accelerometer.setUpdateInterval(ACCELEROMETER_INTERVAL_MS);
 
+    // Start settle period — ignore samples briefly to prevent
+    // the button tap motion from triggering a false launch
+    settledRef.current = false;
+    consecutiveCountRef.current = 0;
+    settleTimerRef.current = setTimeout(() => {
+      settledRef.current = true;
+      consecutiveCountRef.current = 0;
+    }, SETTLE_PERIOD_MS);
+
     // Subscribe to accelerometer data
     subscriptionRef.current = Accelerometer.addListener((data) => {
       setRawData(data);
@@ -89,8 +109,8 @@ export function useAccelerometer({
       const forwardAccelG = Math.abs(data.y);
       setCurrentAcceleration(forwardAccelG);
 
-      // Launch detection logic
-      if (!launchDetectedRef.current) {
+      // Launch detection logic — only after settle period
+      if (!launchDetectedRef.current && settledRef.current) {
         if (forwardAccelG >= launchThresholdG) {
           consecutiveCountRef.current++;
 
@@ -111,6 +131,10 @@ export function useAccelerometer({
       if (subscriptionRef.current) {
         subscriptionRef.current.remove();
         subscriptionRef.current = null;
+      }
+      if (settleTimerRef.current) {
+        clearTimeout(settleTimerRef.current);
+        settleTimerRef.current = null;
       }
       setIsMonitoring(false);
     };
