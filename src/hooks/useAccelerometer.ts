@@ -15,7 +15,7 @@ const DEFAULT_CONSECUTIVE_SAMPLES_REQUIRED = 3;
 
 // Settle period after arming before launch detection activates (ms)
 // Prevents the button tap motion from triggering a false launch
-const SETTLE_PERIOD_MS = 500;
+const SETTLE_PERIOD_MS = 300;
 
 interface UseAccelerometerOptions {
   enabled: boolean;
