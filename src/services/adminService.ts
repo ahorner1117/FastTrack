@@ -571,7 +571,7 @@ export async function getPendingPostReports(): Promise<PostReport[]> {
       `
       *,
       post:posts(*),
-      reporter_profile:profiles!post_reports_reported_by_fkey(id, display_name, avatar_url)
+      reporter_profile:profiles!post_reports_reported_by_profiles_fkey(id, display_name, avatar_url)
     `
     )
     .eq('status', 'pending')
@@ -591,7 +591,7 @@ export async function getPendingCommentReports(): Promise<CommentReport[]> {
       `
       *,
       comment:post_comments(*),
-      reporter_profile:profiles!comment_reports_reported_by_fkey(id, display_name, avatar_url)
+      reporter_profile:profiles!comment_reports_reported_by_profiles_fkey(id, display_name, avatar_url)
     `
     )
     .eq('status', 'pending')
