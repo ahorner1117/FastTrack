@@ -37,6 +37,7 @@ export default function AddVehicleScreen() {
     year: string;
     make: string;
     model: string;
+    trim: string;
     photoUri?: string;
     upgrades: VehicleUpgrade[];
     notes: string;
@@ -71,13 +72,15 @@ export default function AddVehicleScreen() {
       }
     }
 
+    const trimmed = data.trim?.trim();
     const vehicle = {
       id: vehicleId,
-      name: `${data.year} ${data.make} ${data.model}`,
+      name: `${data.year} ${data.make} ${data.model}${trimmed ? ' ' + trimmed : ''}`,
       type: data.type,
       year,
       make: data.make.trim(),
       model: data.model.trim(),
+      trim: trimmed || undefined,
       photoUri: finalPhotoUri,
       upgrades: data.upgrades,
       notes: data.notes.trim() || undefined,

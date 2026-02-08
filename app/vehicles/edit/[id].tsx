@@ -47,6 +47,7 @@ export default function EditVehicleScreen() {
     year: string;
     make: string;
     model: string;
+    trim: string;
     photoUri?: string;
     upgrades: VehicleUpgrade[];
     notes: string;
@@ -79,12 +80,14 @@ export default function EditVehicleScreen() {
       }
     }
 
+    const trimmed = data.trim?.trim();
     updateVehicle(id, {
-      name: `${data.year} ${data.make} ${data.model}`,
+      name: `${data.year} ${data.make} ${data.model}${trimmed ? ' ' + trimmed : ''}`,
       type: data.type,
       year,
       make: data.make.trim(),
       model: data.model.trim(),
+      trim: trimmed || undefined,
       photoUri: finalPhotoUri,
       upgrades: data.upgrades,
       notes: data.notes.trim() || undefined,
@@ -115,6 +118,7 @@ export default function EditVehicleScreen() {
           year: vehicle.year.toString(),
           make: vehicle.make,
           model: vehicle.model,
+          trim: vehicle.trim ?? '',
           photoUri: photoUri,
           upgrades: vehicle.upgrades,
           notes: vehicle.notes ?? '',

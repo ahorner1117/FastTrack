@@ -15,12 +15,22 @@ import type { Vehicle, VehicleUpgrade, VehicleType } from '../../types';
 import { COLORS, VEHICLE_TYPES } from '../../utils/constants';
 import { VehicleImage } from './VehicleImage';
 import { UpgradeSelector } from './UpgradeSelector';
+import { AutocompleteInput } from './AutocompleteInput';
+import {
+  getMakesForType,
+  getModelsForMakeId,
+  findMakeByName,
+  titleCase,
+  type VehicleMake,
+  type VehicleModel,
+} from '../../services/vpicService';
 
 interface VehicleFormData {
   type: VehicleType;
   year: string;
   make: string;
   model: string;
+  trim: string;
   photoUri?: string;
   upgrades: VehicleUpgrade[];
   notes: string;
@@ -51,15 +61,104 @@ export function VehicleForm({
   const [year, setYear] = React.useState(initialData?.year ?? '');
   const [make, setMake] = React.useState(initialData?.make ?? '');
   const [model, setModel] = React.useState(initialData?.model ?? '');
+  const [trim, setTrim] = React.useState(initialData?.trim ?? '');
   const [photoUri, setPhotoUri] = React.useState(initialData?.photoUri);
   const [upgrades, setUpgrades] = React.useState<VehicleUpgrade[]>(
     initialData?.upgrades ?? []
   );
   const [notes, setNotes] = React.useState(initialData?.notes ?? '');
 
+  const [makes, setMakes] = React.useState<VehicleMake[]>([]);
+  const [models, setModels] = React.useState<VehicleModel[]>([]);
+  const [makesLoading, setMakesLoading] = React.useState(false);
+  const [modelsLoading, setModelsLoading] = React.useState(false);
+  const [selectedMakeId, setSelectedMakeId] = React.useState<number | null>(null);
+
   React.useEffect(() => {
     setPhotoUri(initialData?.photoUri);
   }, [initialData?.photoUri]);
+
+  // Load makes when type changes
+  React.useEffect(() => {
+    if (type === 'other') {
+      setMakes([]);
+      setModels([]);
+      setSelectedMakeId(null);
+      return;
+    }
+    let cancelled = false;
+    setMakesLoading(true);
+    getMakesForType(type).then((result) => {
+      if (!cancelled) {
+        setMakes(result);
+        setMakesLoading(false);
+        // Try to resolve initial make
+        if (make) {
+          const found = findMakeByName(result, make);
+          if (found) setSelectedMakeId(found.MakeId);
+        }
+      }
+    });
+    return () => { cancelled = true; };
+  }, [type]);
+
+  // Load models when selectedMakeId changes
+  React.useEffect(() => {
+    if (!selectedMakeId) {
+      setModels([]);
+      return;
+    }
+    let cancelled = false;
+    setModelsLoading(true);
+    getModelsForMakeId(selectedMakeId).then((result) => {
+      if (!cancelled) {
+        setModels(result);
+        setModelsLoading(false);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [selectedMakeId]);
+
+  const filteredMakes = React.useMemo(() => {
+    if (!make || make.length < 2) return [];
+    const lower = make.toLowerCase();
+    return makes
+      .filter((m) => titleCase(m.MakeName).toLowerCase().includes(lower))
+      .slice(0, 20)
+      .map((m) => titleCase(m.MakeName));
+  }, [make, makes]);
+
+  const filteredModels = React.useMemo(() => {
+    if (!model || model.length < 2) return [];
+    const lower = model.toLowerCase();
+    return models
+      .filter((m) => titleCase(m.Model_Name).toLowerCase().includes(lower))
+      .slice(0, 20)
+      .map((m) => titleCase(m.Model_Name));
+  }, [model, models]);
+
+  const handleMakeChange = (text: string) => {
+    setMake(text);
+    // Try to resolve make ID as user types
+    const found = findMakeByName(makes, text);
+    if (found) {
+      setSelectedMakeId(found.MakeId);
+    } else {
+      setSelectedMakeId(null);
+      setModels([]);
+    }
+  };
+
+  const handleMakeSelect = (selected: string) => {
+    setMake(selected);
+    setModel('');
+    const found = findMakeByName(makes, selected);
+    setSelectedMakeId(found?.MakeId ?? null);
+  };
+
+  const handleModelSelect = (selected: string) => {
+    setModel(selected);
+  };
 
   const handleToggleUpgrade = (upgrade: VehicleUpgrade) => {
     setUpgrades((prev) =>
@@ -78,6 +177,7 @@ export function VehicleForm({
       year,
       make,
       model,
+      trim,
       photoUri,
       upgrades,
       notes,
@@ -85,6 +185,7 @@ export function VehicleForm({
   };
 
   const isValid = year.trim() && make.trim() && model.trim();
+  const useAutocomplete = type !== 'other';
 
   return (
     <KeyboardAvoidingView
@@ -181,33 +282,76 @@ export function VehicleForm({
 
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-          <View style={styles.inputRow}>
+          <View style={[styles.inputRow, { zIndex: 3 }]}>
             <Text style={[styles.inputLabel, { color: colors.text }]}>Make</Text>
-            <TextInput
-              style={[
-                styles.input,
-                { backgroundColor: colors.surfaceElevated, color: colors.text },
-              ]}
-              value={make}
-              onChangeText={setMake}
-              placeholder="Ford"
-              placeholderTextColor={colors.textTertiary}
-              autoCapitalize="words"
-            />
+            {useAutocomplete ? (
+              <AutocompleteInput
+                value={make}
+                onChangeText={handleMakeChange}
+                onSelect={handleMakeSelect}
+                suggestions={filteredMakes}
+                placeholder="Ford"
+                isDark={isDark}
+                loading={makesLoading}
+                autoCapitalize="words"
+              />
+            ) : (
+              <TextInput
+                style={[
+                  styles.input,
+                  { backgroundColor: colors.surfaceElevated, color: colors.text },
+                ]}
+                value={make}
+                onChangeText={setMake}
+                placeholder="Ford"
+                placeholderTextColor={colors.textTertiary}
+                autoCapitalize="words"
+              />
+            )}
+          </View>
+
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+          <View style={[styles.inputRow, { zIndex: 2 }]}>
+            <Text style={[styles.inputLabel, { color: colors.text }]}>Model</Text>
+            {useAutocomplete && selectedMakeId ? (
+              <AutocompleteInput
+                value={model}
+                onChangeText={setModel}
+                onSelect={handleModelSelect}
+                suggestions={filteredModels}
+                placeholder="Mustang"
+                isDark={isDark}
+                loading={modelsLoading}
+                autoCapitalize="words"
+              />
+            ) : (
+              <TextInput
+                style={[
+                  styles.input,
+                  { backgroundColor: colors.surfaceElevated, color: colors.text },
+                ]}
+                value={model}
+                onChangeText={setModel}
+                placeholder="Mustang"
+                placeholderTextColor={colors.textTertiary}
+                autoCapitalize="words"
+              />
+            )}
           </View>
 
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
           <View style={styles.inputRow}>
-            <Text style={[styles.inputLabel, { color: colors.text }]}>Model</Text>
+            <Text style={[styles.inputLabel, { color: colors.text }]}>Trim</Text>
             <TextInput
               style={[
                 styles.input,
                 { backgroundColor: colors.surfaceElevated, color: colors.text },
               ]}
-              value={model}
-              onChangeText={setModel}
-              placeholder="Mustang GT"
+              value={trim}
+              onChangeText={setTrim}
+              placeholder="GT, Sport, Limited..."
               placeholderTextColor={colors.textTertiary}
               autoCapitalize="words"
             />

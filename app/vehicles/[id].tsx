@@ -132,6 +132,19 @@ export default function VehicleDetailScreen() {
               {vehicle.model}
             </Text>
           </View>
+          {vehicle.trim ? (
+            <>
+              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+              <View style={styles.infoRow}>
+                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
+                  Trim
+                </Text>
+                <Text style={[styles.infoValue, { color: colors.text }]}>
+                  {vehicle.trim}
+                </Text>
+              </View>
+            </>
+          ) : null}
         </View>
 
         {upgradeLabels.length > 0 && (

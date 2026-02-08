@@ -43,6 +43,7 @@ export interface Vehicle {
   year: number;
   make: string;
   model: string;
+  trim?: string;
   photoUri?: string;
   upgrades: VehicleUpgrade[];
   notes?: string;
@@ -155,6 +156,7 @@ export interface CloudVehicle {
   year: number;
   make: string;
   model: string;
+  trim: string | null;
   photo_uri: string | null;
   upgrades: string[];
   notes: string | null;
