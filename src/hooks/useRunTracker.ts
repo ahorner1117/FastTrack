@@ -64,6 +64,7 @@ export function useRunTracker() {
   } = useLocation(gpsAccuracy);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerStartRef = useRef<number | null>(null);
   const startPointRef = useRef<{ lat: number; lon: number } | null>(null);
   const lastPointRef = useRef<{ lat: number; lon: number; timestamp: number } | null>(null);
   const totalDistanceRef = useRef(0);
@@ -118,11 +119,12 @@ export function useRunTracker() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     }
 
-    // Start elapsed time timer
+    // Start elapsed time timer using wall clock to avoid stale GPS timestamp offset
+    const wallClockStart = Date.now();
+    timerStartRef.current = wallClockStart;
     timerRef.current = setInterval(() => {
-      const { startTime } = useRunStore.getState();
-      if (startTime) {
-        setElapsedTime(Date.now() - startTime);
+      if (timerStartRef.current) {
+        setElapsedTime(Date.now() - timerStartRef.current);
       }
     }, TIMER_UPDATE_INTERVAL_MS);
   }, [currentLocation, hapticFeedback, unitSystem, start, addGpsPoint, setElapsedTime]);
@@ -143,6 +145,7 @@ export function useRunTracker() {
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
+      timerStartRef.current = null;
     };
   }, [startTracking, stopTracking]);
 
@@ -317,6 +320,7 @@ export function useRunTracker() {
           clearInterval(timerRef.current);
           timerRef.current = null;
         }
+        timerStartRef.current = null;
         startPointRef.current = null;
         lastPointRef.current = null;
         totalDistanceRef.current = 0;
@@ -333,6 +337,7 @@ export function useRunTracker() {
           clearInterval(timerRef.current);
           timerRef.current = null;
         }
+        timerStartRef.current = null;
         startPointRef.current = null;
         lastPointRef.current = null;
         totalDistanceRef.current = 0;
@@ -351,6 +356,7 @@ export function useRunTracker() {
           clearInterval(timerRef.current);
           timerRef.current = null;
         }
+        timerStartRef.current = null;
 
         // Save run to history if auto-save is enabled
         if (autoSaveRuns) {
@@ -398,6 +404,7 @@ export function useRunTracker() {
       case 'completed':
         // Reset for new run
         reset();
+        timerStartRef.current = null;
         startPointRef.current = null;
         lastPointRef.current = null;
         totalDistanceRef.current = 0;

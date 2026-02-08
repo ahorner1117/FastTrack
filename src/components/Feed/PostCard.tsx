@@ -95,9 +95,16 @@ export function PostCard({
           <View
             style={[styles.avatar, { backgroundColor: colors.surfaceElevated }]}
           >
-            <Text style={[styles.avatarText, { color: colors.text }]}>
-              {displayName.charAt(0).toUpperCase()}
-            </Text>
+            {post.profile?.avatar_url ? (
+              <Image
+                source={{ uri: post.profile.avatar_url }}
+                style={styles.avatarImage}
+              />
+            ) : (
+              <Text style={[styles.avatarText, { color: colors.text }]}>
+                {displayName.charAt(0).toUpperCase()}
+              </Text>
+            )}
           </View>
           <View>
             <Text style={[styles.displayName, { color: colors.text }]}>
@@ -200,6 +207,11 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  avatarImage: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
   },
   avatarText: {
     fontSize: 14,

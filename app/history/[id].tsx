@@ -100,6 +100,9 @@ export default function RunDetailScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Stats */}
+        <RunStatsCard run={run} unitSystem={unitSystem} />
+
         {/* Route Map */}
         {run.gpsPoints.length > 0 && (
           <View style={styles.mapSection}>
@@ -116,9 +119,6 @@ export default function RunDetailScreen() {
             />
           </View>
         )}
-
-        {/* Stats */}
-        <RunStatsCard run={run} unitSystem={unitSystem} />
 
         {/* Delete Button */}
         <TouchableOpacity

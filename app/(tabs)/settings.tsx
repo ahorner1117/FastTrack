@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { Camera, Check, ChevronDown, ChevronRight, LogOut, Phone, Shield, User } from 'lucide-react-native';
@@ -628,7 +629,7 @@ export default function SettingsScreen() {
       </Card>
 
       <Text style={[styles.versionText, { color: colors.textSecondary }]}>
-        FastTrack v1.0.0
+        FastTrack v{Constants.expoConfig?.version ?? '1.2.2'}
       </Text>
     </ScrollView>
   );
