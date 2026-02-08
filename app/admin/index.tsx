@@ -7,14 +7,21 @@ import {
   TextInput,
   RefreshControl,
   ActivityIndicator,
+  TouchableOpacity,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Search, Users } from 'lucide-react-native';
+import { Search, Users, Flag } from 'lucide-react-native';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
 import { COLORS } from '@/src/utils/constants';
 import { AdminUserCard } from '@/src/components/Admin';
-import { getAllUsers, searchUsers, type AdminUserWithStats } from '@/src/services/adminService';
+import {
+  getAllUsers,
+  searchUsers,
+  getPendingPostReports,
+  getPendingCommentReports,
+  type AdminUserWithStats,
+} from '@/src/services/adminService';
 
 export default function AdminUsersScreen() {
   const colorScheme = useColorScheme();
@@ -28,6 +35,7 @@ export default function AdminUsersScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingReportsCount, setPendingReportsCount] = useState(0);
 
   const loadUsers = useCallback(async () => {
     try {
@@ -40,9 +48,22 @@ export default function AdminUsersScreen() {
     }
   }, []);
 
+  const loadReportsCount = useCallback(async () => {
+    try {
+      const [postReports, commentReports] = await Promise.all([
+        getPendingPostReports(),
+        getPendingCommentReports(),
+      ]);
+      setPendingReportsCount(postReports.length + commentReports.length);
+    } catch (err) {
+      // Silently fail - reports count is not critical
+      console.error('Failed to load reports count:', err);
+    }
+  }, []);
+
   useEffect(() => {
-    loadUsers().finally(() => setIsLoading(false));
-  }, [loadUsers]);
+    Promise.all([loadUsers(), loadReportsCount()]).finally(() => setIsLoading(false));
+  }, [loadUsers, loadReportsCount]);
 
   useEffect(() => {
     if (searchQuery.trim() === '') {
@@ -60,9 +81,9 @@ export default function AdminUsersScreen() {
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    await loadUsers();
+    await Promise.all([loadUsers(), loadReportsCount()]);
     setIsRefreshing(false);
-  }, [loadUsers]);
+  }, [loadUsers, loadReportsCount]);
 
   const handleUserPress = (userId: string) => {
     router.push(`/admin/user/${userId}`);
@@ -108,6 +129,18 @@ export default function AdminUsersScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {pendingReportsCount > 0 && (
+        <TouchableOpacity
+          style={[styles.reportsBanner, { backgroundColor: COLORS.warning }]}
+          onPress={() => router.push('/admin/reports')}
+        >
+          <Flag size={20} color="#000000" />
+          <Text style={styles.reportsBannerText}>
+            {pendingReportsCount} pending report{pendingReportsCount !== 1 ? 's' : ''} need review
+          </Text>
+        </TouchableOpacity>
+      )}
+
       <View style={styles.searchContainer}>
         <View style={[styles.searchBox, { backgroundColor: isDark ? '#1A1A1A' : '#E5E5E5' }]}>
           <Search color={colors.textSecondary} size={20} />
@@ -151,6 +184,19 @@ const styles = StyleSheet.create({
   centered: {
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  reportsBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    gap: 10,
+  },
+  reportsBannerText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#000000',
   },
   searchContainer: {
     padding: 16,

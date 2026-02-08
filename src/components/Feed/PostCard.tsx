@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,9 +6,12 @@ import {
   Image,
   Pressable,
   Dimensions,
+  Alert,
 } from 'react-native';
-import { Heart, MessageCircle, Trash2 } from 'lucide-react-native';
+import { Heart, MessageCircle, Trash2, MoreVertical, Flag } from 'lucide-react-native';
 import { COLORS } from '@/src/utils/constants';
+import { ReportModal } from './ReportModal';
+import { reportPost } from '@/src/services/reportingService';
 import type { Post } from '@/src/types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -55,6 +58,31 @@ export function PostCard({
   const colors = isDark ? COLORS.dark : COLORS.light;
   const isOwner = currentUserId === post.user_id;
   const displayName = post.profile?.display_name || 'Unknown User';
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+
+  const handleMoreOptions = () => {
+    const options = isOwner
+      ? [{ text: 'Delete', onPress: onDelete, style: 'destructive' as const }]
+      : [{ text: 'Report', onPress: () => setReportModalVisible(true) }];
+
+    Alert.alert('Post Options', undefined, [
+      ...options,
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const handleReportSubmit = async (reason: string, description?: string) => {
+    try {
+      await reportPost(post.id, reason, description);
+      Alert.alert(
+        'Report Submitted',
+        'Thank you for your report. Our moderation team will review it shortly.'
+      );
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to submit report');
+      throw error;
+    }
+  };
 
   return (
     <Pressable
@@ -80,12 +108,18 @@ export function PostCard({
             </Text>
           </View>
         </View>
-        {isOwner && onDelete && (
-          <Pressable onPress={onDelete} hitSlop={8}>
-            <Trash2 color={colors.textSecondary} size={18} />
-          </Pressable>
-        )}
+        <Pressable onPress={handleMoreOptions} hitSlop={8}>
+          <MoreVertical color={colors.textSecondary} size={20} />
+        </Pressable>
       </View>
+
+      <ReportModal
+        visible={reportModalVisible}
+        isDark={isDark}
+        type="post"
+        onClose={() => setReportModalVisible(false)}
+        onSubmit={handleReportSubmit}
+      />
 
       {/* Image */}
       <Image

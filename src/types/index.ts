@@ -211,3 +211,74 @@ export interface CreatePostInput {
   vehicle_id?: string;
   run_id?: string;
 }
+
+// Admin & Moderation Types
+
+export interface AdminUserDetailFull {
+  profile: Profile;
+  runs: CloudRun[];
+  vehicles: CloudVehicle[];
+  posts: Post[];
+  stats: {
+    total_runs: number;
+    total_vehicles: number;
+    total_posts: number;
+    total_comments: number;
+    flagged_posts: number;
+  };
+}
+
+export interface UpdateProfileInput {
+  display_name?: string;
+  avatar_url?: string;
+  is_admin?: boolean;
+}
+
+export interface BanUserInput {
+  reason: string;
+}
+
+export interface HideContentInput {
+  reason: string;
+}
+
+export interface PostReport {
+  id: string;
+  post_id: string;
+  reported_by: string;
+  reason: string;
+  description: string | null;
+  status: 'pending' | 'reviewed' | 'dismissed';
+  created_at: string;
+  reviewed_by?: string | null;
+  reviewed_at?: string | null;
+  // Joined data
+  post?: Post;
+  reporter_profile?: Profile;
+}
+
+export interface CommentReport {
+  id: string;
+  comment_id: string;
+  reported_by: string;
+  reason: string;
+  description: string | null;
+  status: 'pending' | 'reviewed' | 'dismissed';
+  created_at: string;
+  reviewed_by?: string | null;
+  reviewed_at?: string | null;
+  // Joined data
+  comment?: PostComment;
+  reporter_profile?: Profile;
+}
+
+export interface AdminAction {
+  id: string;
+  admin_user_id: string;
+  action_type: string;
+  target_type: string;
+  target_id: string;
+  reason: string | null;
+  metadata: Record<string, any> | null;
+  created_at: string;
+}

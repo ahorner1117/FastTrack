@@ -72,6 +72,26 @@ export async function signIn({ email, password }: SignInParams) {
     throw error;
   }
 
+  // Check if user is banned
+  if (data.user) {
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('is_banned, ban_reason')
+      .eq('id', data.user.id)
+      .single();
+
+    if (profileError) {
+      console.error('Error checking ban status:', profileError);
+      // Continue login if profile check fails (don't block legitimate users)
+    } else if (profile?.is_banned) {
+      // Sign out the user immediately
+      await supabase.auth.signOut();
+      throw new Error(
+        profile.ban_reason || 'Your account has been banned. Please contact support.'
+      );
+    }
+  }
+
   return data;
 }
 
