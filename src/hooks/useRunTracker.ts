@@ -427,6 +427,7 @@ export function useRunTracker() {
   return {
     // State
     status,
+    startTime,
     currentSpeed,
     currentDistance,
     elapsedTime,
@@ -438,6 +439,7 @@ export function useRunTracker() {
     isTracking,
     accuracy,
     isAccuracyOk,
+    currentLocation,
     latitude: currentLocation?.latitude ?? null,
     longitude: currentLocation?.longitude ?? null,
 

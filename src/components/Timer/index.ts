@@ -10,3 +10,4 @@ export { ModeSelector } from './ModeSelector';
 export { DriveStats } from './DriveStats';
 export { DriveButton } from './DriveButton';
 export { VehicleSelector } from './VehicleSelector';
+export { SecondaryTimerDisplay } from './SecondaryTimerDisplay';

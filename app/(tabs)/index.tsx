@@ -13,10 +13,13 @@ import {
   DriveStats,
   DriveButton,
   VehicleSelector,
+  SecondaryTimerDisplay,
 } from '../../src/components/Timer';
 import { useVehicleStore } from '../../src/stores/vehicleStore';
 import { useRunTracker } from '../../src/hooks/useRunTracker';
 import { useDriveTracker } from '../../src/hooks/useDriveTracker';
+import { useMagnitudeAccelerometer } from '../../src/hooks/useMagnitudeAccelerometer';
+import { useSecondaryTimer } from '../../src/hooks/useSecondaryTimer';
 import { useRunStore } from '../../src/stores/runStore';
 import { useSettingsStore } from '../../src/stores/settingsStore';
 import { COLORS } from '../../src/utils/constants';
@@ -25,13 +28,30 @@ import type { TimerMode } from '../../src/types';
 export default function TimerScreen() {
   const [mode, setMode] = useState<TimerMode>('acceleration');
 
+  // Settings
+  const { unitSystem, gpsAccuracy, hapticFeedback, launchDetectionThresholdG, launchDetectionSampleCount } = useSettingsStore();
+
   // Acceleration mode hook
   const runTracker = useRunTracker();
 
   // Drive tracking mode hook
   const driveTracker = useDriveTracker();
 
-  const { unitSystem, gpsAccuracy, hapticFeedback, launchDetectionThresholdG, launchDetectionSampleCount } = useSettingsStore();
+  // Secondary timer (magnitude-based launch detection)
+  const secondaryTimer = useSecondaryTimer({
+    primaryStatus: runTracker.status,
+    primaryStartTime: runTracker.startTime,
+    currentLocation: runTracker.currentLocation,
+    unitSystem,
+    gpsAccuracy,
+  });
+
+  const magnitudeAccel = useMagnitudeAccelerometer({
+    enabled: runTracker.status === 'armed',
+    launchThresholdG: launchDetectionThresholdG,
+    consecutiveSamplesRequired: launchDetectionSampleCount,
+    onLaunchDetected: secondaryTimer.handleLaunchDetected,
+  });
   const gpsPoints = useRunStore((state) => state.gpsPoints);
   const vehicles = useVehicleStore((state) => state.vehicles);
 
@@ -95,6 +115,18 @@ export default function TimerScreen() {
                 isRunning={runTracker.status === 'running'}
               />
             </View>
+
+            {/* Secondary (Magnitude) Timer Display */}
+            <SecondaryTimerDisplay
+              elapsedMs={secondaryTimer.elapsedTime}
+              isRunning={secondaryTimer.status === 'running'}
+              milestones={secondaryTimer.milestones}
+              unitSystem={unitSystem}
+              launchDelta={secondaryTimer.launchDelta}
+              currentAcceleration={magnitudeAccel.currentAcceleration}
+              isMonitoring={magnitudeAccel.isMonitoring}
+              status={secondaryTimer.status}
+            />
 
             {/* Speed Display */}
             <View style={styles.speedSection}>

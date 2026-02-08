@@ -3,6 +3,10 @@ export const COLORS = {
   accent: '#00FF7F',
   accentDim: '#00CC66',
 
+  // Secondary accent (magnitude timer)
+  secondary: '#00BFFF',
+  secondaryDim: '#0099CC',
+
   // Dark theme
   dark: {
     background: '#000000',
