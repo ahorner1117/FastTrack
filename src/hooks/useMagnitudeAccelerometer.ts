@@ -18,7 +18,7 @@ interface UseMagnitudeAccelerometerOptions {
   enabled: boolean;
   launchThresholdG?: number;
   consecutiveSamplesRequired?: number;
-  onLaunchDetected: () => void;
+  onLaunchDetected: (launchTimestamp: number) => void;
 }
 
 interface MagnitudeAccelerometerState {
@@ -112,7 +112,7 @@ export function useMagnitudeAccelerometer({
 
           if (consecutiveCountRef.current >= consecutiveSamplesRequired) {
             launchDetectedRef.current = true;
-            onLaunchDetectedRef.current();
+            onLaunchDetectedRef.current(Date.now());
           }
         } else {
           // Reset counter if acceleration drops below threshold

@@ -21,7 +21,7 @@ interface UseAccelerometerOptions {
   enabled: boolean;
   launchThresholdG?: number;
   consecutiveSamplesRequired?: number;
-  onLaunchDetected: () => void;
+  onLaunchDetected: (launchTimestamp: number) => void;
 }
 
 interface AccelerometerState {
@@ -116,7 +116,7 @@ export function useAccelerometer({
 
           if (consecutiveCountRef.current >= consecutiveSamplesRequired) {
             launchDetectedRef.current = true;
-            onLaunchDetectedRef.current();
+            onLaunchDetectedRef.current(Date.now());
           }
         } else {
           // Reset counter if acceleration drops below threshold

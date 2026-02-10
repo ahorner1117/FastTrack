@@ -33,7 +33,7 @@ interface UseSecondaryTimerResult {
   milestones: Milestones;
   maxSpeed: number;
   launchDelta: number | null;
-  handleLaunchDetected: () => void;
+  handleLaunchDetected: (launchTimestamp: number) => void;
 }
 
 export function useSecondaryTimer({
@@ -111,7 +111,8 @@ export function useSecondaryTimer({
   }, [primaryStatus]);
 
   // Handle launch detected from magnitude accelerometer
-  const handleLaunchDetected = useCallback(() => {
+  // launchTimestamp is the wall-clock time (Date.now()) captured by the accelerometer
+  const handleLaunchDetected = useCallback((launchTimestamp: number) => {
     if (statusRef.current !== 'armed') return;
 
     const location = currentLocation;
@@ -133,19 +134,19 @@ export function useSecondaryTimer({
     };
     totalDistanceRef.current = 0;
     smoothedSpeedRef.current = 0;
+    // GPS start time for milestone calculations (GPS-based elapsed times)
     startTimeRef.current = location.timestamp;
 
     setStatus('running');
     statusRef.current = 'running';
 
-    // Compute launch delta vs primary
+    // Compute launch delta vs primary (both wall-clock based)
     if (primaryStartTime) {
-      setLaunchDelta(location.timestamp - primaryStartTime);
+      setLaunchDelta(launchTimestamp - primaryStartTime);
     }
 
-    // Start elapsed time timer
-    const wallClockStart = Date.now();
-    timerStartRef.current = wallClockStart;
+    // Start elapsed time timer from the exact launch moment
+    timerStartRef.current = launchTimestamp;
     timerRef.current = setInterval(() => {
       if (timerStartRef.current) {
         setElapsedTime(Date.now() - timerStartRef.current);

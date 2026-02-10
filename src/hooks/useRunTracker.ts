@@ -69,10 +69,12 @@ export function useRunTracker() {
   const lastPointRef = useRef<{ lat: number; lon: number; timestamp: number } | null>(null);
   const totalDistanceRef = useRef(0);
   const smoothedSpeedRef = useRef(0);
+  const gpsStartTimeRef = useRef<number | null>(null);
   const SPEED_SMOOTHING_FACTOR = 0.3; // 0 = no smoothing, 1 = no history
 
   // Launch detection callback - called by accelerometer when launch is detected
-  const handleLaunchDetected = useCallback(() => {
+  // launchTimestamp is the wall-clock time (Date.now()) captured by the accelerometer
+  const handleLaunchDetected = useCallback((launchTimestamp: number) => {
     const currentStatus = useRunStore.getState().status;
     if (currentStatus !== 'armed') return;
 
@@ -112,16 +114,19 @@ export function useRunTracker() {
       timestamp: location.timestamp,
     };
 
-    start(location.timestamp);
+    // Store GPS start timestamp separately for milestone calculations
+    gpsStartTimeRef.current = location.timestamp;
+
+    // Use wall-clock launch timestamp for run start (consistent with endTime)
+    start(launchTimestamp);
     addGpsPoint(gpsPoint);
 
     if (hapticFeedback && Haptics) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     }
 
-    // Start elapsed time timer using wall clock to avoid stale GPS timestamp offset
-    const wallClockStart = Date.now();
-    timerStartRef.current = wallClockStart;
+    // Start elapsed time timer from the exact launch moment
+    timerStartRef.current = launchTimestamp;
     timerRef.current = setInterval(() => {
       if (timerStartRef.current) {
         setElapsedTime(Date.now() - timerStartRef.current);
@@ -221,8 +226,8 @@ export function useRunTracker() {
 
   const checkSpeedMilestones = useCallback(
     (speed: number, distance: number, gpsTimestamp: number) => {
-      const { milestones, startTime } = useRunStore.getState();
-      const currentElapsed = startTime ? gpsTimestamp - startTime : 0;
+      const { milestones } = useRunStore.getState();
+      const currentElapsed = gpsStartTimeRef.current ? gpsTimestamp - gpsStartTimeRef.current : 0;
 
       // Check 0-60 (or 0-100 km/h)
       const sixtyThreshold =
@@ -267,8 +272,8 @@ export function useRunTracker() {
 
   const checkDistanceMilestones = useCallback(
     (speed: number, distance: number, gpsTimestamp: number) => {
-      const { milestones, startTime } = useRunStore.getState();
-      const currentElapsed = startTime ? gpsTimestamp - startTime : 0;
+      const { milestones } = useRunStore.getState();
+      const currentElapsed = gpsStartTimeRef.current ? gpsTimestamp - gpsStartTimeRef.current : 0;
 
       // Check quarter mile
       const quarterThreshold =
@@ -325,6 +330,7 @@ export function useRunTracker() {
         lastPointRef.current = null;
         totalDistanceRef.current = 0;
         smoothedSpeedRef.current = 0;
+        gpsStartTimeRef.current = null;
         arm();
         if (hapticFeedback && Haptics) {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -342,6 +348,7 @@ export function useRunTracker() {
         lastPointRef.current = null;
         totalDistanceRef.current = 0;
         smoothedSpeedRef.current = 0;
+        gpsStartTimeRef.current = null;
         reset();
         // Go back to idle, will auto-arm again when GPS is ready
         setStatus('idle');
@@ -395,6 +402,7 @@ export function useRunTracker() {
         lastPointRef.current = null;
         totalDistanceRef.current = 0;
         smoothedSpeedRef.current = 0;
+        gpsStartTimeRef.current = null;
         stop();
         if (hapticFeedback && Haptics) {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
@@ -409,6 +417,7 @@ export function useRunTracker() {
         lastPointRef.current = null;
         totalDistanceRef.current = 0;
         smoothedSpeedRef.current = 0;
+        gpsStartTimeRef.current = null;
         if (isAccuracyOk) {
           setStatus('ready');
         } else {
