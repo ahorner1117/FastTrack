@@ -1,9 +1,10 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { Platform } from 'react-native';
 import { useSettingsStore } from '../stores/settingsStore';
+import { useDriveHistoryStore } from '../stores/driveHistoryStore';
 import { useLocation } from './useLocation';
 import { calculateDistance } from '../services/locationService';
-import { TIMER_UPDATE_INTERVAL_MS } from '../utils/constants';
+import { TIMER_UPDATE_INTERVAL_MS, GPS_ACCURACY_THRESHOLDS } from '../utils/constants';
 import type { GPSPoint, Drive } from '../types';
 
 const Haptics = Platform.OS !== 'web' ? require('expo-haptics') : null;
@@ -11,7 +12,8 @@ const Haptics = Platform.OS !== 'web' ? require('expo-haptics') : null;
 export type DriveStatus = 'idle' | 'ready' | 'tracking' | 'paused' | 'completed';
 
 export function useDriveTracker() {
-  const { gpsAccuracy, hapticFeedback, unitSystem } = useSettingsStore();
+  const { gpsAccuracy, hapticFeedback, unitSystem, defaultVehicleId } = useSettingsStore();
+  const addDrive = useDriveHistoryStore((state) => state.addDrive);
 
   const {
     hasPermission,
@@ -61,9 +63,16 @@ export function useDriveTracker() {
     if (!currentLocation) return;
 
     const speed = Math.max(0, currentLocation.speed ?? 0);
-    setCurrentSpeedState(speed);
+    const locationAccuracy = currentLocation.accuracy ?? 999;
+    const maxAcceptableAccuracy = GPS_ACCURACY_THRESHOLDS[gpsAccuracy] * 2;
+    const isGoodAccuracy = locationAccuracy <= maxAcceptableAccuracy;
 
-    if (status === 'tracking') {
+    // Only update displayed speed when accuracy is acceptable
+    if (isGoodAccuracy) {
+      setCurrentSpeedState(speed);
+    }
+
+    if (status === 'tracking' && isGoodAccuracy) {
       // Track max speed
       if (speed > maxSpeed) {
         setMaxSpeed(speed);
@@ -76,7 +85,7 @@ export function useDriveTracker() {
         latitude: currentLocation.latitude,
         longitude: currentLocation.longitude,
         speed,
-        accuracy: currentLocation.accuracy ?? 999,
+        accuracy: locationAccuracy,
         timestamp: currentLocation.timestamp,
       };
 
@@ -99,7 +108,7 @@ export function useDriveTracker() {
         lon: currentLocation.longitude,
       };
     }
-  }, [currentLocation, status, maxSpeed]);
+  }, [currentLocation, status, maxSpeed, gpsAccuracy]);
 
   const startDrive = useCallback(() => {
     if (status !== 'ready' && status !== 'paused') return;
@@ -155,12 +164,30 @@ export function useDriveTracker() {
       timerRef.current = null;
     }
 
+    // Save drive to history
+    if (startTime && gpsPoints.length > 0) {
+      const completedDrive: Drive = {
+        id: `drive_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+        vehicleId: defaultVehicleId,
+        startTime,
+        endTime: Date.now(),
+        distance: distanceAccumulator.current,
+        maxSpeed,
+        avgSpeed: speedSamples.current.length > 0
+          ? speedSamples.current.reduce((a, b) => a + b, 0) / speedSamples.current.length
+          : 0,
+        gpsPoints,
+        createdAt: Date.now(),
+      };
+      addDrive(completedDrive);
+    }
+
     setStatus('completed');
 
     if (hapticFeedback && Haptics) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     }
-  }, [status, hapticFeedback]);
+  }, [status, hapticFeedback, startTime, gpsPoints, maxSpeed, defaultVehicleId, addDrive]);
 
   const resetDrive = useCallback(() => {
     if (timerRef.current) {

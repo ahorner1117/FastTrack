@@ -72,6 +72,7 @@ export const STORAGE_KEYS = {
   SETTINGS: '@fasttrack/settings',
   VEHICLES: '@fasttrack/vehicles',
   RUNS: '@fasttrack/runs',
+  DRIVES: '@fasttrack/drives',
   AUTH_SESSION: '@fasttrack/auth-session',
 } as const;
 

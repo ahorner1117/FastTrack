@@ -11,6 +11,13 @@ import {
 } from '../services/locationService';
 import { GPS_UPDATE_INTERVAL_MS } from '../utils/constants';
 
+// Max plausible speed in m/s (~560 mph) — anything faster is a GPS teleport
+const MAX_PLAUSIBLE_SPEED_MS = 250;
+
+// When GPS horizontal accuracy exceeds this (meters), zero out reported speed
+// as it's unreliable noise from multipath/indoor reflections
+const SPEED_ACCURACY_CUTOFF_M = 25;
+
 // Only import expo-location on native platforms
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const Location: typeof LocationTypes | null = Platform.OS !== 'web' ? require('expo-location') : null;
@@ -32,6 +39,7 @@ export function useLocation(gpsAccuracyThreshold: GPSAccuracy): UseLocationResul
   const [isTracking, setIsTracking] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<LocationData | null>(null);
   const subscriptionRef = useRef<LocationTypes.LocationSubscription | null>(null);
+  const lastValidLocationRef = useRef<{ lat: number; lon: number; timestamp: number } | null>(null);
 
   // Check permissions on mount
   useEffect(() => {
@@ -60,6 +68,9 @@ export function useLocation(gpsAccuracyThreshold: GPSAccuracy): UseLocationResul
       subscriptionRef.current.remove();
     }
 
+    // Reset jump detection so stale positions don't cause false rejections
+    lastValidLocationRef.current = null;
+
     setIsTracking(true);
 
     subscriptionRef.current = await Location.watchPositionAsync(
@@ -69,12 +80,44 @@ export function useLocation(gpsAccuracyThreshold: GPSAccuracy): UseLocationResul
         distanceInterval: 0, // Get all updates
       },
       (location: { coords: { latitude: number; longitude: number; speed: number | null; accuracy: number | null }; timestamp: number }) => {
+        const { latitude, longitude, speed: rawSpeed, accuracy: horAccuracy } = location.coords;
+        const timestamp = location.timestamp;
+
+        // --- GPS jump / teleportation rejection ---
+        if (lastValidLocationRef.current) {
+          const dt = (timestamp - lastValidLocationRef.current.timestamp) / 1000;
+          if (dt > 0) {
+            const dist = calculateDistance(
+              lastValidLocationRef.current.lat,
+              lastValidLocationRef.current.lon,
+              latitude,
+              longitude
+            );
+            const impliedSpeed = dist / dt;
+            if (impliedSpeed > MAX_PLAUSIBLE_SPEED_MS) {
+              // Impossible jump — discard this reading entirely
+              return;
+            }
+          }
+        }
+
+        lastValidLocationRef.current = { lat: latitude, lon: longitude, timestamp };
+
+        // --- Speed filtering ---
+        // iOS reports -1 when speed is unavailable
+        let filteredSpeed = rawSpeed !== null && rawSpeed >= 0 ? rawSpeed : 0;
+
+        // When horizontal accuracy is too poor, GPS-reported speed is unreliable
+        if (horAccuracy !== null && horAccuracy > SPEED_ACCURACY_CUTOFF_M) {
+          filteredSpeed = 0;
+        }
+
         setCurrentLocation({
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-          speed: location.coords.speed,
-          accuracy: location.coords.accuracy,
-          timestamp: location.timestamp,
+          latitude,
+          longitude,
+          speed: filteredSpeed,
+          accuracy: horAccuracy,
+          timestamp,
         });
       }
     );
