@@ -114,8 +114,13 @@ export function useRunTracker() {
       timestamp: location.timestamp,
     };
 
-    // Store GPS start timestamp separately for milestone calculations
-    gpsStartTimeRef.current = location.timestamp;
+    // Use wall-clock launch timestamp for milestone calculations too.
+    // Previously this used location.timestamp, but that GPS reading can be
+    // stale (1-3+ seconds old) since GPS updates at ~1Hz while the
+    // accelerometer fires at 100Hz. On iOS, GPS timestamps share the same
+    // system clock as Date.now(), so using launchTimestamp keeps milestones
+    // consistent with the display timer.
+    gpsStartTimeRef.current = launchTimestamp;
 
     // Use wall-clock launch timestamp for run start (consistent with endTime)
     start(launchTimestamp);

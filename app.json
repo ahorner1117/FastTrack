@@ -22,7 +22,6 @@
         "NSMotionUsageDescription": "FastTrack uses motion sensors to enhance speed measurement accuracy.",
         "NSContactsUsageDescription": "FastTrack uses your contacts to help you find and connect with friends who also use the app.",
         "UIBackgroundModes": [
-          "location",
           "location"
         ],
         "ITSAppUsesNonExemptEncryption": false
