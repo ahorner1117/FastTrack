@@ -78,11 +78,11 @@ export function LaunchStatus({
   };
 
   const getSubMessage = () => {
-    if (status === 'armed' && isAccelerometerAvailable) {
+    if ((status === 'armed' || status === 'running') && isAccelerometerAvailable) {
       const gForce = currentAcceleration.toFixed(2);
       const thresholdStr = launchThreshold !== undefined ? `${launchThreshold}G` : '?';
       const samplesStr = sampleCount !== undefined ? `×${sampleCount}` : '';
-      return `Current: ${gForce}G | Threshold: ${thresholdStr}${samplesStr}`;
+      return `G-force: ${gForce}G | Threshold: ${thresholdStr}${samplesStr}`;
     }
     return null;
   };

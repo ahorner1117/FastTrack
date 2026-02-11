@@ -49,6 +49,14 @@ export function useAccelerometer({
   const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onLaunchDetectedRef = useRef(onLaunchDetected);
 
+  // Gravity calibration: collect X-axis samples during settle period to
+  // establish a baseline. This baseline is subtracted from subsequent
+  // readings so that gravity leaking onto the X-axis (due to phone tilt)
+  // does not trigger a false launch.
+  // X-axis = forward/backward when phone is mounted with screen facing driver.
+  const calibrationSamplesRef = useRef<number[]>([]);
+  const baselineXRef = useRef(0);
+
   // Keep callback ref updated
   useEffect(() => {
     onLaunchDetectedRef.current = onLaunchDetected;
@@ -69,6 +77,8 @@ export function useAccelerometer({
     consecutiveCountRef.current = 0;
     launchDetectedRef.current = false;
     settledRef.current = false;
+    calibrationSamplesRef.current = [];
+    baselineXRef.current = 0;
     if (settleTimerRef.current) {
       clearTimeout(settleTimerRef.current);
       settleTimerRef.current = null;
@@ -91,10 +101,18 @@ export function useAccelerometer({
     Accelerometer.setUpdateInterval(ACCELEROMETER_INTERVAL_MS);
 
     // Start settle period — ignore samples briefly to prevent
-    // the button tap motion from triggering a false launch
+    // the button tap motion from triggering a false launch.
+    // During this period, collect X-axis samples for gravity calibration.
     settledRef.current = false;
     consecutiveCountRef.current = 0;
+    calibrationSamplesRef.current = [];
     settleTimerRef.current = setTimeout(() => {
+      // Compute gravity baseline from samples collected during settle period
+      if (calibrationSamplesRef.current.length > 0) {
+        const sum = calibrationSamplesRef.current.reduce((a, b) => a + b, 0);
+        baselineXRef.current = sum / calibrationSamplesRef.current.length;
+      }
+      calibrationSamplesRef.current = [];
       settledRef.current = true;
       consecutiveCountRef.current = 0;
     }, SETTLE_PERIOD_MS);
@@ -103,15 +121,23 @@ export function useAccelerometer({
     subscriptionRef.current = Accelerometer.addListener((data) => {
       setRawData(data);
 
-      // Use Y-axis as forward acceleration (phone in portrait, screen facing driver)
-      // Y-axis directly measures forward/backward acceleration
-      // No calibration needed - gravity is on Z-axis in this orientation
-      const forwardAccelG = Math.abs(data.y);
-      setCurrentAcceleration(forwardAccelG);
+      // During settle period, collect X-axis samples for gravity calibration
+      // but don't report acceleration or attempt launch detection
+      if (!settledRef.current) {
+        calibrationSamplesRef.current.push(data.x);
+        setCurrentAcceleration(0);
+        return;
+      }
 
-      // Launch detection logic — only after settle period
-      if (!launchDetectedRef.current && settledRef.current) {
-        if (forwardAccelG >= launchThresholdG) {
+      // Use X-axis as forward acceleration (phone mounted with screen facing driver)
+      // Subtract calibrated gravity baseline so that phone tilt doesn't
+      // register as forward acceleration
+      const calibratedAccelG = Math.abs(data.x - baselineXRef.current);
+      setCurrentAcceleration(calibratedAccelG);
+
+      // Launch detection logic — only after settle/calibration period
+      if (!launchDetectedRef.current) {
+        if (calibratedAccelG >= launchThresholdG) {
           consecutiveCountRef.current++;
 
           if (consecutiveCountRef.current >= consecutiveSamplesRequired) {
