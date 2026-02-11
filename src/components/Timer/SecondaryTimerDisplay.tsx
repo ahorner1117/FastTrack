@@ -15,7 +15,6 @@ interface SecondaryTimerDisplayProps {
   isRunning: boolean;
   milestones: Milestones;
   unitSystem: UnitSystem;
-  launchDelta: number | null;
   currentAcceleration: number;
   isMonitoring: boolean;
   status: 'idle' | 'armed' | 'running' | 'completed';
@@ -36,17 +35,11 @@ function formatMilestoneTime(ms: number): string {
   return (ms / 1000).toFixed(2) + 's';
 }
 
-function formatDelta(ms: number): string {
-  const sign = ms >= 0 ? '+' : '';
-  return `${sign}${(ms / 1000).toFixed(2)}s`;
-}
-
 export function SecondaryTimerDisplay({
   elapsedMs,
   isRunning,
   milestones,
   unitSystem,
-  launchDelta,
   currentAcceleration,
   isMonitoring,
   status,
@@ -79,12 +72,7 @@ export function SecondaryTimerDisplay({
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.label}>MAGNITUDE TIMER</Text>
-        {launchDelta !== null && (
-          <View style={styles.deltaBadge}>
-            <Text style={styles.deltaText}>{formatDelta(launchDelta)}</Text>
-          </View>
-        )}
+        <Text style={styles.label}>ACCEL TIMER</Text>
       </View>
 
       {/* Timer */}
@@ -95,7 +83,7 @@ export function SecondaryTimerDisplay({
       {/* Armed state: show acceleration reading */}
       {status === 'armed' && isMonitoring && (
         <Text style={styles.accelText}>
-          {currentAcceleration.toFixed(2)} G (magnitude)
+          {currentAcceleration.toFixed(2)} G
         </Text>
       )}
 
@@ -131,18 +119,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.secondary,
     letterSpacing: 1,
-  },
-  deltaBadge: {
-    backgroundColor: COLORS.secondaryDim + '33',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  deltaText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.secondary,
-    fontVariant: ['tabular-nums'],
   },
   time: {
     fontSize: 36,

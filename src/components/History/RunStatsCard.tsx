@@ -95,6 +95,50 @@ export function RunStatsCard({ run, unitSystem }: RunStatsCardProps) {
           )}
       </View>
 
+      {/* Accel Timer Section */}
+      {run.accelMilestones && (
+        run.accelMilestones.zeroToSixty ||
+        run.accelMilestones.zeroToHundred ||
+        run.accelMilestones.quarterMile ||
+        run.accelMilestones.halfMile
+      ) && (
+        <View style={[styles.section, styles.accelSection]}>
+          <Text style={styles.accelSectionTitle}>Accel Timer</Text>
+
+          {run.accelMilestones.zeroToSixty && (
+            <StatRow
+              label={unitSystem === 'imperial' ? '0-60 mph' : '0-100 km/h'}
+              value={formatTimeShort(run.accelMilestones.zeroToSixty.time)}
+              highlight
+            />
+          )}
+
+          {run.accelMilestones.zeroToHundred && (
+            <StatRow
+              label={unitSystem === 'imperial' ? '0-100 mph' : '0-160 km/h'}
+              value={formatTimeShort(run.accelMilestones.zeroToHundred.time)}
+              highlight
+            />
+          )}
+
+          {run.accelMilestones.quarterMile && (
+            <StatRow
+              label={unitSystem === 'imperial' ? '1/4 Mile' : '250 Meters'}
+              value={formatTimeShort(run.accelMilestones.quarterMile.time)}
+              highlight
+            />
+          )}
+
+          {run.accelMilestones.halfMile && (
+            <StatRow
+              label={unitSystem === 'imperial' ? '1/2 Mile' : '500 Meters'}
+              value={formatTimeShort(run.accelMilestones.halfMile.time)}
+              highlight
+            />
+          )}
+        </View>
+      )}
+
       {/* Speed Breakdown Section */}
       {milestones.speedMilestones &&
         Object.keys(milestones.speedMilestones).length > 0 && (
@@ -171,10 +215,22 @@ const styles = StyleSheet.create({
     padding: 16,
     marginHorizontal: 16,
   },
+  accelSection: {
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.secondary,
+  },
   sectionTitle: {
     fontSize: 14,
     fontWeight: '600',
     color: COLORS.dark.textSecondary,
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  accelSectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.secondary,
     marginBottom: 12,
     textTransform: 'uppercase',
     letterSpacing: 0.5,

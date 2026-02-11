@@ -18,7 +18,6 @@ import {
 import { useVehicleStore } from '../../src/stores/vehicleStore';
 import { useRunTracker } from '../../src/hooks/useRunTracker';
 import { useDriveTracker } from '../../src/hooks/useDriveTracker';
-import { useMagnitudeAccelerometer } from '../../src/hooks/useMagnitudeAccelerometer';
 import { useSecondaryTimer } from '../../src/hooks/useSecondaryTimer';
 import { useRunStore } from '../../src/stores/runStore';
 import { useSettingsStore } from '../../src/stores/settingsStore';
@@ -37,20 +36,13 @@ export default function TimerScreen() {
   // Drive tracking mode hook
   const driveTracker = useDriveTracker();
 
-  // Secondary timer (magnitude-based launch detection)
+  // Secondary accelerometer timer (shares primary launch detection, wall-clock milestone timing)
   const secondaryTimer = useSecondaryTimer({
     primaryStatus: runTracker.status,
     primaryStartTime: runTracker.startTime,
     currentLocation: runTracker.currentLocation,
     unitSystem,
     gpsAccuracy,
-  });
-
-  const magnitudeAccel = useMagnitudeAccelerometer({
-    enabled: runTracker.status === 'armed',
-    launchThresholdG: launchDetectionThresholdG,
-    consecutiveSamplesRequired: launchDetectionSampleCount,
-    onLaunchDetected: secondaryTimer.handleLaunchDetected,
   });
   const gpsPoints = useRunStore((state) => state.gpsPoints);
   const vehicles = useVehicleStore((state) => state.vehicles);
@@ -122,9 +114,8 @@ export default function TimerScreen() {
               isRunning={secondaryTimer.status === 'running'}
               milestones={secondaryTimer.milestones}
               unitSystem={unitSystem}
-              launchDelta={secondaryTimer.launchDelta}
-              currentAcceleration={magnitudeAccel.currentAcceleration}
-              isMonitoring={magnitudeAccel.isMonitoring}
+              currentAcceleration={runTracker.currentAcceleration}
+              isMonitoring={runTracker.isAccelerometerMonitoring}
               status={secondaryTimer.status}
             />
 

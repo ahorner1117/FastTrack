@@ -72,6 +72,8 @@ export function useRunTracker() {
   const totalDistanceRef = useRef(0);
   const smoothedSpeedRef = useRef(0);
   const gpsStartTimeRef = useRef<number | null>(null);
+  const prevGpsSpeedRef = useRef(0);
+  const prevGpsTimestampRef = useRef<number | null>(null);
   const SPEED_SMOOTHING_FACTOR = 0.3; // 0 = no smoothing, 1 = no history
 
   // Launch detection callback - called by accelerometer when launch is detected
@@ -106,6 +108,8 @@ export function useRunTracker() {
     };
     totalDistanceRef.current = 0;
     smoothedSpeedRef.current = 0;
+    prevGpsSpeedRef.current = 0;
+    prevGpsTimestampRef.current = null;
 
     const speed = Math.max(0, location.speed ?? 0);
     const gpsPoint: GPSPoint = {
@@ -225,16 +229,51 @@ export function useRunTracker() {
         };
       }
 
-      // Always check milestones using raw GPS speed (no smoothing lag)
-      checkSpeedMilestones(rawSpeed, totalDistanceRef.current, currentLocation.timestamp);
+      // Check milestones — interpolate between GPS points for sub-second precision
+      checkSpeedMilestones(
+        rawSpeed,
+        totalDistanceRef.current,
+        currentLocation.timestamp,
+        prevGpsSpeedRef.current,
+        prevGpsTimestampRef.current,
+      );
       checkDistanceMilestones(rawSpeed, totalDistanceRef.current, currentLocation.timestamp);
+
+      // Update previous GPS reading for next interpolation
+      prevGpsSpeedRef.current = rawSpeed;
+      prevGpsTimestampRef.current = currentLocation.timestamp;
     }
   }, [currentLocation, status, gpsAccuracy]);
 
+  // Interpolate the timestamp when speed crossed a threshold between two GPS readings.
+  // If previous data is available and the threshold falls between prevSpeed and currentSpeed,
+  // linearly interpolate the crossing time. Otherwise fall back to the current GPS timestamp.
+  const interpolateThresholdTime = useCallback(
+    (
+      threshold: number,
+      currentSpeed: number,
+      currentTimestamp: number,
+      prevSpeed: number,
+      prevTimestamp: number | null,
+    ): number => {
+      if (prevTimestamp !== null && currentSpeed > prevSpeed) {
+        const fraction = (threshold - prevSpeed) / (currentSpeed - prevSpeed);
+        return prevTimestamp + fraction * (currentTimestamp - prevTimestamp);
+      }
+      return currentTimestamp;
+    },
+    []
+  );
+
   const checkSpeedMilestones = useCallback(
-    (speed: number, distance: number, gpsTimestamp: number) => {
+    (
+      speed: number,
+      distance: number,
+      gpsTimestamp: number,
+      prevSpeed: number,
+      prevTimestamp: number | null,
+    ) => {
       const { milestones } = useRunStore.getState();
-      const currentElapsed = gpsStartTimeRef.current ? gpsTimestamp - gpsStartTimeRef.current : 0;
 
       // Check 0-60 (or 0-100 km/h)
       const sixtyThreshold =
@@ -243,12 +282,9 @@ export function useRunTracker() {
           : SPEED_THRESHOLDS.SIXTY_KPH;
 
       if (!milestones.zeroToSixty && speed >= sixtyThreshold) {
-        const milestone: RunMilestone = {
-          speed,
-          time: currentElapsed,
-          distance,
-        };
-        setMilestone('zeroToSixty', milestone);
+        const crossingTimestamp = interpolateThresholdTime(sixtyThreshold, speed, gpsTimestamp, prevSpeed, prevTimestamp);
+        const elapsed = gpsStartTimeRef.current ? crossingTimestamp - gpsStartTimeRef.current : 0;
+        setMilestone('zeroToSixty', { speed, time: elapsed, distance });
 
         if (hapticFeedback && Haptics) {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -262,12 +298,9 @@ export function useRunTracker() {
           : SPEED_THRESHOLDS.HUNDRED_KPH;
 
       if (!milestones.zeroToHundred && speed >= hundredThreshold) {
-        const milestone: RunMilestone = {
-          speed,
-          time: currentElapsed,
-          distance,
-        };
-        setMilestone('zeroToHundred', milestone);
+        const crossingTimestamp = interpolateThresholdTime(hundredThreshold, speed, gpsTimestamp, prevSpeed, prevTimestamp);
+        const elapsed = gpsStartTimeRef.current ? crossingTimestamp - gpsStartTimeRef.current : 0;
+        setMilestone('zeroToHundred', { speed, time: elapsed, distance });
 
         if (hapticFeedback && Haptics) {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -279,16 +312,14 @@ export function useRunTracker() {
         const existing = milestones.speedMilestones ?? {};
         for (const { mph, threshold } of SPEED_MILESTONE_THRESHOLDS_MPH) {
           if (!existing[mph] && speed >= threshold) {
-            setSpeedMilestone(mph, {
-              speed,
-              time: currentElapsed,
-              distance,
-            });
+            const crossingTimestamp = interpolateThresholdTime(threshold, speed, gpsTimestamp, prevSpeed, prevTimestamp);
+            const elapsed = gpsStartTimeRef.current ? crossingTimestamp - gpsStartTimeRef.current : 0;
+            setSpeedMilestone(mph, { speed, time: elapsed, distance });
           }
         }
       }
     },
-    [unitSystem, hapticFeedback, setMilestone, setSpeedMilestone]
+    [unitSystem, hapticFeedback, setMilestone, setSpeedMilestone, interpolateThresholdTime]
   );
 
   const checkDistanceMilestones = useCallback(
@@ -352,6 +383,8 @@ export function useRunTracker() {
         totalDistanceRef.current = 0;
         smoothedSpeedRef.current = 0;
         gpsStartTimeRef.current = null;
+        prevGpsSpeedRef.current = 0;
+        prevGpsTimestampRef.current = null;
         arm();
         if (hapticFeedback && Haptics) {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -370,6 +403,8 @@ export function useRunTracker() {
         totalDistanceRef.current = 0;
         smoothedSpeedRef.current = 0;
         gpsStartTimeRef.current = null;
+        prevGpsSpeedRef.current = 0;
+        prevGpsTimestampRef.current = null;
         reset();
         // Go back to idle, will auto-arm again when GPS is ready
         setStatus('idle');
@@ -390,12 +425,14 @@ export function useRunTracker() {
         if (autoSaveRuns) {
           const state = useRunStore.getState();
           if (state.startTime && state.gpsPoints.length > 0) {
+            const accelMilestones = useRunStore.getState().accelMilestones;
             const completedRun: Run = {
               id: `run_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
               vehicleId: defaultVehicleId,
               startTime: state.startTime,
               endTime: Date.now(),
               milestones: state.milestones,
+              accelMilestones: Object.keys(accelMilestones).length > 0 ? accelMilestones : undefined,
               maxSpeed: state.maxSpeed,
               gpsPoints: state.gpsPoints,
               createdAt: Date.now(),
@@ -424,6 +461,8 @@ export function useRunTracker() {
         totalDistanceRef.current = 0;
         smoothedSpeedRef.current = 0;
         gpsStartTimeRef.current = null;
+        prevGpsSpeedRef.current = 0;
+        prevGpsTimestampRef.current = null;
         stop();
         if (hapticFeedback && Haptics) {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
@@ -439,6 +478,8 @@ export function useRunTracker() {
         totalDistanceRef.current = 0;
         smoothedSpeedRef.current = 0;
         gpsStartTimeRef.current = null;
+        prevGpsSpeedRef.current = 0;
+        prevGpsTimestampRef.current = null;
         if (isAccuracyOk) {
           setStatus('ready');
         } else {

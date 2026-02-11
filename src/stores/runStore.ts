@@ -1,11 +1,12 @@
 import { create } from 'zustand';
-import type { TimerState, GPSPoint, RunMilestone } from '../types';
+import type { TimerState, GPSPoint, RunMilestone, AccelMilestones } from '../types';
 
 // Maximum GPS points to store (at 10Hz, 6000 = 10 minutes of data)
 // This prevents memory issues on long runs
 const MAX_GPS_POINTS = 6000;
 
 interface RunStoreState extends TimerState {
+  accelMilestones: AccelMilestones;
   // Actions
   setStatus: (status: TimerState['status']) => void;
   setSpeed: (speed: number) => void;
@@ -18,19 +19,21 @@ interface RunStoreState extends TimerState {
     milestone: RunMilestone
   ) => void;
   setSpeedMilestone: (mph: number, milestone: RunMilestone) => void;
+  setAccelMilestone: (key: keyof AccelMilestones, milestone: RunMilestone) => void;
   arm: () => void;
   start: (gpsTimestamp: number) => void;
   stop: () => void;
   reset: () => void;
 }
 
-const initialState: TimerState = {
+const initialState: TimerState & { accelMilestones: AccelMilestones } = {
   status: 'idle',
   startTime: null,
   currentSpeed: 0,
   currentDistance: 0,
   elapsedTime: 0,
   milestones: {},
+  accelMilestones: {},
   maxSpeed: 0,
   gpsPoints: [],
 };
@@ -83,6 +86,14 @@ export const useRunStore = create<RunStoreState>()((set, get) => ({
       },
     })),
 
+  setAccelMilestone: (key, milestone) =>
+    set((state) => ({
+      accelMilestones: {
+        ...state.accelMilestones,
+        [key]: milestone,
+      },
+    })),
+
   arm: () =>
     set({
       status: 'armed',
@@ -91,6 +102,7 @@ export const useRunStore = create<RunStoreState>()((set, get) => ({
       currentDistance: 0,
       elapsedTime: 0,
       milestones: {},
+      accelMilestones: {},
       maxSpeed: 0,
       gpsPoints: [],
     }),

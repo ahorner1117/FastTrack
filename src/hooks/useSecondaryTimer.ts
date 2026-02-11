@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { calculateDistance } from '../services/locationService';
 import type { LocationData } from '../services/locationService';
 import type { RunMilestone, UnitSystem, GPSAccuracy } from '../types';
+import { useRunStore } from '../stores/runStore';
 import {
   SPEED_THRESHOLDS,
   DISTANCE_THRESHOLDS,
@@ -21,7 +22,7 @@ interface Milestones {
 
 interface UseSecondaryTimerOptions {
   primaryStatus: PrimaryStatus;
-  primaryStartTime: number | null;
+  primaryStartTime: number | null; // Wall-clock launch timestamp from accelerometer
   currentLocation: LocationData | null;
   unitSystem: UnitSystem;
   gpsAccuracy: GPSAccuracy;
@@ -32,10 +33,16 @@ interface UseSecondaryTimerResult {
   elapsedTime: number;
   milestones: Milestones;
   maxSpeed: number;
-  launchDelta: number | null;
-  handleLaunchDetected: (launchTimestamp: number) => void;
 }
 
+/**
+ * Secondary "accelerometer timer" — shares the primary accelerometer's launch
+ * detection and records milestone times using wall-clock elapsed time
+ * (Date.now() − launchTimestamp) instead of GPS timestamps.
+ *
+ * GPS speed still determines WHEN milestones are crossed; only the elapsed
+ * time recorded at each milestone differs from the primary timer.
+ */
 export function useSecondaryTimer({
   primaryStatus,
   primaryStartTime,
@@ -43,127 +50,84 @@ export function useSecondaryTimer({
   unitSystem,
   gpsAccuracy,
 }: UseSecondaryTimerOptions): UseSecondaryTimerResult {
+  const setAccelMilestone = useRunStore((state) => state.setAccelMilestone);
+
   const [status, setStatus] = useState<SecondaryStatus>('idle');
   const [elapsedTime, setElapsedTime] = useState(0);
   const [milestones, setMilestones] = useState<Milestones>({});
   const [maxSpeed, setMaxSpeed] = useState(0);
-  const [launchDelta, setLaunchDelta] = useState<number | null>(null);
 
-  const startTimeRef = useRef<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const timerStartRef = useRef<number | null>(null);
+  const launchTimeRef = useRef<number | null>(null);
   const lastPointRef = useRef<{ lat: number; lon: number; timestamp: number } | null>(null);
   const totalDistanceRef = useRef(0);
-  const smoothedSpeedRef = useRef(0);
   const milestonesRef = useRef<Milestones>({});
   const statusRef = useRef<SecondaryStatus>('idle');
-
-  const SPEED_SMOOTHING_FACTOR = 0.3;
 
   // Keep statusRef in sync
   useEffect(() => {
     statusRef.current = status;
   }, [status]);
 
-  // Arm when primary arms, reset when primary completes/idles
+  // Sync with primary timer status
   useEffect(() => {
     if (primaryStatus === 'armed' && statusRef.current === 'idle') {
+      // Arm when primary arms — reset all state
       setStatus('armed');
       statusRef.current = 'armed';
-      // Reset state
       setElapsedTime(0);
       setMilestones({});
       setMaxSpeed(0);
-      setLaunchDelta(null);
       milestonesRef.current = {};
-      startTimeRef.current = null;
+      launchTimeRef.current = null;
       lastPointRef.current = null;
       totalDistanceRef.current = 0;
-      smoothedSpeedRef.current = 0;
+    } else if (primaryStatus === 'running' && statusRef.current === 'armed' && primaryStartTime) {
+      // Primary launched — start secondary timer from same accelerometer timestamp
+      launchTimeRef.current = primaryStartTime;
+      totalDistanceRef.current = 0;
+      lastPointRef.current = null;
+
+      setStatus('running');
+      statusRef.current = 'running';
+
+      // Start display timer from the accelerometer launch timestamp
+      timerRef.current = setInterval(() => {
+        if (launchTimeRef.current) {
+          setElapsedTime(Date.now() - launchTimeRef.current);
+        }
+      }, TIMER_UPDATE_INTERVAL_MS);
     } else if (primaryStatus === 'idle' || primaryStatus === 'ready') {
       // Primary reset or disarmed — reset secondary
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
-      timerStartRef.current = null;
-      startTimeRef.current = null;
+      launchTimeRef.current = null;
       lastPointRef.current = null;
       totalDistanceRef.current = 0;
-      smoothedSpeedRef.current = 0;
       milestonesRef.current = {};
       setStatus('idle');
       statusRef.current = 'idle';
       setElapsedTime(0);
       setMilestones({});
       setMaxSpeed(0);
-      setLaunchDelta(null);
     } else if (primaryStatus === 'completed' && statusRef.current === 'running') {
       // Primary stopped — stop secondary too
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
-      timerStartRef.current = null;
       setStatus('completed');
       statusRef.current = 'completed';
     }
-  }, [primaryStatus]);
-
-  // Handle launch detected from magnitude accelerometer
-  // launchTimestamp is the wall-clock time (Date.now()) captured by the accelerometer
-  const handleLaunchDetected = useCallback((launchTimestamp: number) => {
-    if (statusRef.current !== 'armed') return;
-
-    const location = currentLocation;
-    if (!location) return;
-
-    // Speed gate: only start if below max start speed
-    const currentSpeedMs = Math.max(0, location.speed ?? 0);
-    const maxStartSpeed = unitSystem === 'imperial'
-      ? SPEED_THRESHOLDS.MAX_START_SPEED_MPH
-      : SPEED_THRESHOLDS.MAX_START_SPEED_KPH;
-
-    if (currentSpeedMs > maxStartSpeed) return;
-
-    // Record start point
-    lastPointRef.current = {
-      lat: location.latitude,
-      lon: location.longitude,
-      timestamp: location.timestamp,
-    };
-    totalDistanceRef.current = 0;
-    smoothedSpeedRef.current = 0;
-    // GPS start time for milestone calculations (GPS-based elapsed times)
-    startTimeRef.current = location.timestamp;
-
-    setStatus('running');
-    statusRef.current = 'running';
-
-    // Compute launch delta vs primary (both wall-clock based)
-    if (primaryStartTime) {
-      setLaunchDelta(launchTimestamp - primaryStartTime);
-    }
-
-    // Start elapsed time timer from the exact launch moment
-    timerStartRef.current = launchTimestamp;
-    timerRef.current = setInterval(() => {
-      if (timerStartRef.current) {
-        setElapsedTime(Date.now() - timerStartRef.current);
-      }
-    }, TIMER_UPDATE_INTERVAL_MS);
-  }, [currentLocation, unitSystem, primaryStartTime]);
+  }, [primaryStatus, primaryStartTime]);
 
   // Process GPS updates while running
   useEffect(() => {
-    if (!currentLocation || statusRef.current !== 'running') return;
+    if (!currentLocation || statusRef.current !== 'running' || !launchTimeRef.current) return;
 
     const rawSpeed = Math.max(0, currentLocation.speed ?? 0);
-
-    // Apply smoothing
-    smoothedSpeedRef.current =
-      smoothedSpeedRef.current * (1 - SPEED_SMOOTHING_FACTOR) +
-      rawSpeed * SPEED_SMOOTHING_FACTOR;
 
     // Track max speed
     if (rawSpeed > maxSpeed) {
@@ -175,14 +139,16 @@ export function useSecondaryTimer({
     const maxAcceptableAccuracy = GPS_ACCURACY_THRESHOLDS[gpsAccuracy] * 2;
     const isGoodAccuracy = accuracy <= maxAcceptableAccuracy;
 
-    if (isGoodAccuracy && lastPointRef.current) {
-      const segmentDistance = calculateDistance(
-        lastPointRef.current.lat,
-        lastPointRef.current.lon,
-        currentLocation.latitude,
-        currentLocation.longitude
-      );
-      totalDistanceRef.current += segmentDistance;
+    if (isGoodAccuracy) {
+      if (lastPointRef.current) {
+        const segmentDistance = calculateDistance(
+          lastPointRef.current.lat,
+          lastPointRef.current.lon,
+          currentLocation.latitude,
+          currentLocation.longitude
+        );
+        totalDistanceRef.current += segmentDistance;
+      }
 
       lastPointRef.current = {
         lat: currentLocation.latitude,
@@ -191,10 +157,8 @@ export function useSecondaryTimer({
       };
     }
 
-    // Check milestones
-    const currentElapsed = startTimeRef.current
-      ? currentLocation.timestamp - startTimeRef.current
-      : 0;
+    // Check milestones — wall-clock elapsed time from accelerometer launch
+    const currentElapsed = Date.now() - launchTimeRef.current;
     const distance = totalDistanceRef.current;
 
     // Speed milestones
@@ -206,6 +170,7 @@ export function useSecondaryTimer({
       const milestone: RunMilestone = { speed: rawSpeed, time: currentElapsed, distance };
       milestonesRef.current = { ...milestonesRef.current, zeroToSixty: milestone };
       setMilestones({ ...milestonesRef.current });
+      setAccelMilestone('zeroToSixty', milestone);
     }
 
     const hundredThreshold = unitSystem === 'imperial'
@@ -216,6 +181,7 @@ export function useSecondaryTimer({
       const milestone: RunMilestone = { speed: rawSpeed, time: currentElapsed, distance };
       milestonesRef.current = { ...milestonesRef.current, zeroToHundred: milestone };
       setMilestones({ ...milestonesRef.current });
+      setAccelMilestone('zeroToHundred', milestone);
     }
 
     // Distance milestones
@@ -227,6 +193,7 @@ export function useSecondaryTimer({
       const milestone: RunMilestone = { speed: rawSpeed, time: currentElapsed, distance };
       milestonesRef.current = { ...milestonesRef.current, quarterMile: milestone };
       setMilestones({ ...milestonesRef.current });
+      setAccelMilestone('quarterMile', milestone);
     }
 
     const halfThreshold = unitSystem === 'imperial'
@@ -237,8 +204,9 @@ export function useSecondaryTimer({
       const milestone: RunMilestone = { speed: rawSpeed, time: currentElapsed, distance };
       milestonesRef.current = { ...milestonesRef.current, halfMile: milestone };
       setMilestones({ ...milestonesRef.current });
+      setAccelMilestone('halfMile', milestone);
     }
-  }, [currentLocation, gpsAccuracy, unitSystem, maxSpeed]);
+  }, [currentLocation, gpsAccuracy, unitSystem, maxSpeed, setAccelMilestone]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -254,7 +222,5 @@ export function useSecondaryTimer({
     elapsedTime,
     milestones,
     maxSpeed,
-    launchDelta,
-    handleLaunchDetected,
   };
 }

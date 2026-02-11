@@ -57,6 +57,13 @@ export interface RunMilestone {
   distance: number; // meters
 }
 
+export interface AccelMilestones {
+  zeroToSixty?: RunMilestone;
+  zeroToHundred?: RunMilestone;
+  quarterMile?: RunMilestone;
+  halfMile?: RunMilestone;
+}
+
 export interface Run {
   id: string;
   vehicleId: string | null;
@@ -69,6 +76,7 @@ export interface Run {
     halfMile?: RunMilestone;
     speedMilestones?: Record<number, RunMilestone>; // keyed by mph (10, 20, 30...)
   };
+  accelMilestones?: AccelMilestones;
   maxSpeed: number; // m/s
   gpsPoints: GPSPoint[];
   createdAt: number;
