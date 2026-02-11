@@ -256,7 +256,7 @@ export async function syncDriveToCloud(drive: Drive): Promise<CloudDrive | null>
 
   const { data, error } = await supabase
     .from('drives')
-    .upsert(cloudDrive, { onConflict: 'local_id' })
+    .upsert(cloudDrive, { onConflict: 'user_id,local_id' })
     .select()
     .single();
 
