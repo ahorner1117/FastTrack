@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Trash2 } from 'lucide-react-native';
 import { COLORS } from '@/src/utils/constants';
+import { MentionText } from '@/src/utils/mentions';
 import type { PostComment } from '@/src/types';
 
 interface CommentCardProps {
@@ -54,9 +55,9 @@ export function CommentCard({
             {formatTimeAgo(comment.created_at)}
           </Text>
         </View>
-        <Text style={[styles.text, { color: colors.text }]}>
+        <MentionText style={styles.text} isDark={isDark}>
           {comment.content}
-        </Text>
+        </MentionText>
       </View>
       {isOwner && onDelete && (
         <Pressable onPress={onDelete} hitSlop={8} style={styles.deleteButton}>

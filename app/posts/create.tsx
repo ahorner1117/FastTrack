@@ -3,7 +3,6 @@ import {
   StyleSheet,
   View,
   Text,
-  TextInput,
   Image,
   Pressable,
   ScrollView,
@@ -26,6 +25,7 @@ import { useHistoryStore } from '@/src/stores/historyStore';
 import { useDriveHistoryStore } from '@/src/stores/driveHistoryStore';
 import { useSettingsStore } from '@/src/stores/settingsStore';
 import { VisibilityToggle } from '@/src/components/Feed/VisibilityToggle';
+import { MentionTextInput } from '@/src/components/common/MentionTextInput';
 import { formatTime, formatSpeedWithUnit } from '@/src/utils/formatting';
 import type { Vehicle, PostVisibility } from '@/src/types';
 
@@ -181,7 +181,7 @@ export default function CreatePostScreen() {
             </Pressable>
 
             {/* Caption */}
-            <TextInput
+            <MentionTextInput
               style={[
                 styles.captionInput,
                 {
@@ -193,6 +193,7 @@ export default function CreatePostScreen() {
               placeholderTextColor={colors.textSecondary}
               value={caption}
               onChangeText={setCaption}
+              isDark={isDark}
               multiline
               maxLength={500}
             />

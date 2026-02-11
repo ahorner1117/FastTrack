@@ -22,6 +22,7 @@ import type { Profile } from '../types';
 interface SignUpParams {
   email: string;
   password: string;
+  username: string;
   displayName?: string;
   tosAccepted?: boolean;
   tosVersion?: string;
@@ -32,7 +33,27 @@ interface SignInParams {
   password: string;
 }
 
-export async function signUp({ email, password, displayName, tosAccepted, tosVersion }: SignUpParams) {
+export async function checkUsernameAvailable(username: string, excludeUserId?: string): Promise<boolean> {
+  let query = supabase
+    .from('profiles')
+    .select('id')
+    .ilike('username', username);
+
+  if (excludeUserId) {
+    query = query.neq('id', excludeUserId);
+  }
+
+  const { data, error } = await query.maybeSingle();
+
+  if (error) {
+    console.error('Error checking username:', error);
+    return false;
+  }
+
+  return data === null;
+}
+
+export async function signUp({ email, password, username, displayName, tosAccepted, tosVersion }: SignUpParams) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -52,6 +73,7 @@ export async function signUp({ email, password, displayName, tosAccepted, tosVer
     const { error: profileError } = await supabase.from('profiles').insert({
       id: data.user.id,
       email: data.user.email,
+      username: username.toLowerCase(),
       display_name: displayName || null,
       tos_accepted_at: tosAccepted ? new Date().toISOString() : null,
       tos_version: tosVersion || null,
@@ -141,7 +163,7 @@ export async function getProfile(userId: string): Promise<Profile | null> {
 
 export async function updateProfile(
   userId: string,
-  updates: Partial<Pick<Profile, 'display_name' | 'phone_hash' | 'avatar_url' | 'bio'>>
+  updates: Partial<Pick<Profile, 'display_name' | 'phone_hash' | 'avatar_url' | 'bio' | 'username'>>
 ) {
   const { data, error } = await supabase
     .from('profiles')

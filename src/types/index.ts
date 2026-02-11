@@ -121,6 +121,7 @@ export interface Drive {
 export interface Profile {
   id: string;
   email: string;
+  username: string | null;
   display_name: string | null;
   phone_hash: string | null;
   avatar_url: string | null;
@@ -260,6 +261,7 @@ export interface CreatePostInput {
 
 export interface UserSearchResult {
   id: string;
+  username: string | null;
   display_name: string | null;
   avatar_url: string | null;
 }

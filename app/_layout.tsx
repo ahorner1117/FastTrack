@@ -73,7 +73,7 @@ export default function RootLayout() {
 }
 
 function useProtectedRoute() {
-  const { isAuthenticated, isLoading } = useAuthStore();
+  const { isAuthenticated, isLoading, profile } = useAuthStore();
   const segments = useSegments();
   const router = useRouter();
 
@@ -81,15 +81,22 @@ function useProtectedRoute() {
     if (isLoading) return;
 
     const inAuthGroup = (segments[0] as string) === '(auth)';
+    const onSetUsername = segments[1] === 'set-username';
 
     if (!isAuthenticated && !inAuthGroup) {
       // Redirect to sign-in if not authenticated
       router.replace('/(auth)/sign-in' as any);
-    } else if (isAuthenticated && inAuthGroup) {
-      // Redirect to tabs if authenticated and in auth group
+    } else if (isAuthenticated && !inAuthGroup && profile && !profile.username) {
+      // Redirect to set-username if authenticated but no username set
+      router.replace('/(auth)/set-username' as any);
+    } else if (isAuthenticated && inAuthGroup && !onSetUsername && profile?.username) {
+      // Redirect to tabs if authenticated, has username, and in auth group
+      router.replace('/(tabs)');
+    } else if (isAuthenticated && onSetUsername && profile?.username) {
+      // Username now set, redirect to tabs
       router.replace('/(tabs)');
     }
-  }, [isAuthenticated, isLoading, segments]);
+  }, [isAuthenticated, isLoading, segments, profile?.username]);
 }
 
 function RootLayoutNav() {

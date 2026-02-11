@@ -18,6 +18,7 @@ import {
 } from 'lucide-react-native';
 import Colors from '@/constants/Colors';
 import { COLORS } from '@/src/utils/constants';
+import { MentionText } from '@/src/utils/mentions';
 import type { Profile } from '@/src/types';
 
 interface ProfileHeaderProps {
@@ -209,11 +210,18 @@ export function ProfileHeader({
         {profile.display_name || 'FastTrack User'}
       </Text>
 
+      {/* Username */}
+      {profile.username && (
+        <Text style={[styles.username, { color: colors.textSecondary }]}>
+          @{profile.username}
+        </Text>
+      )}
+
       {/* Bio */}
       {profile.bio ? (
-        <Text style={[styles.bio, { color: colors.textSecondary }]}>
+        <MentionText style={styles.bio} isDark={isDark}>
           {profile.bio}
-        </Text>
+        </MentionText>
       ) : isOwnProfile ? (
         <Text style={[styles.bioPlaceholder, { color: colors.textSecondary }]}>
           Add a bio...
@@ -331,6 +339,10 @@ const styles = StyleSheet.create({
   displayName: {
     fontSize: 16,
     fontWeight: '600',
+    marginBottom: 2,
+  },
+  username: {
+    fontSize: 14,
     marginBottom: 4,
   },
   bio: {

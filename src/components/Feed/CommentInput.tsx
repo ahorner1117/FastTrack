@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import {
   View,
-  TextInput,
   StyleSheet,
   Pressable,
   ActivityIndicator,
 } from 'react-native';
 import { Send } from 'lucide-react-native';
 import { COLORS } from '@/src/utils/constants';
+import { MentionTextInput } from '@/src/components/common/MentionTextInput';
 
 interface CommentInputProps {
   isDark: boolean;
@@ -38,7 +38,7 @@ export function CommentInput({ isDark, onSubmit }: CommentInputProps) {
     <View
       style={[styles.container, { backgroundColor: colors.surfaceElevated }]}
     >
-      <TextInput
+      <MentionTextInput
         style={[
           styles.input,
           {
@@ -50,6 +50,7 @@ export function CommentInput({ isDark, onSubmit }: CommentInputProps) {
         placeholderTextColor={colors.textSecondary}
         value={content}
         onChangeText={setContent}
+        isDark={isDark}
         multiline
         maxLength={500}
         editable={!isSubmitting}

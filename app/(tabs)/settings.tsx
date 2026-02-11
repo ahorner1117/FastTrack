@@ -1,7 +1,7 @@
 import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import { Camera, Check, ChevronDown, ChevronRight, LogOut, Phone, Shield, User } from 'lucide-react-native';
+import { AtSign, Camera, Check, ChevronDown, ChevronRight, LogOut, Pencil, Phone, Shield, User } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -20,7 +20,7 @@ import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
 import { Card } from '@/src/components/common/Card';
 import { Toggle } from '@/src/components/common/Toggle';
-import { getProfile, signOut, updateProfile } from '@/src/services/authService';
+import { checkUsernameAvailable, getProfile, signOut, updateProfile } from '@/src/services/authService';
 import { deleteAvatar, uploadAvatar } from '@/src/services/avatarService';
 import { hashPhoneNumber } from '@/src/services/contactsService';
 import { useAuthStore } from '@/src/stores/authStore';
@@ -245,6 +245,10 @@ export default function SettingsScreen() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [isSavingPhone, setIsSavingPhone] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isEditingUsername, setIsEditingUsername] = useState(false);
+  const [newUsername, setNewUsername] = useState(profile?.username || '');
+  const [usernameError, setUsernameError] = useState('');
+  const [isSavingUsername, setIsSavingUsername] = useState(false);
 
   const handlePickAvatar = async () => {
     Alert.alert('Profile Photo', 'Choose an option', [
@@ -352,6 +356,55 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleUsernameChange = (value: string) => {
+    const cleaned = value.toLowerCase().replace(/[^a-z0-9_]/g, '');
+    setNewUsername(cleaned);
+    if (cleaned.length > 0 && cleaned.length <= 4) {
+      setUsernameError('Must be more than 4 characters');
+    } else {
+      setUsernameError('');
+    }
+  };
+
+  const handleSaveUsername = async () => {
+    if (!user || !newUsername.trim()) return;
+
+    if (newUsername.length <= 4) {
+      setUsernameError('Must be more than 4 characters');
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9_]+$/.test(newUsername)) {
+      setUsernameError('Letters, numbers, and underscores only');
+      return;
+    }
+
+    if (newUsername.toLowerCase() === profile?.username) {
+      setIsEditingUsername(false);
+      return;
+    }
+
+    setIsSavingUsername(true);
+    try {
+      const available = await checkUsernameAvailable(newUsername, user.id);
+      if (!available) {
+        setUsernameError('This username is already taken');
+        setIsSavingUsername(false);
+        return;
+      }
+
+      await updateProfile(user.id, { username: newUsername.toLowerCase() });
+      const updatedProfile = await getProfile(user.id);
+      setProfile(updatedProfile);
+      setIsEditingUsername(false);
+      setUsernameError('');
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to update username');
+    } finally {
+      setIsSavingUsername(false);
+    }
+  };
+
   const {
     unitSystem,
     appearance,
@@ -427,10 +480,89 @@ export default function SettingsScreen() {
             <Text style={[styles.accountName, { color: colors.text }]}>
               {profile?.display_name || 'FastTrack User'}
             </Text>
+            {profile?.username && (
+              <Text style={[styles.accountUsername, { color: colors.textSecondary }]}>
+                @{profile.username}
+              </Text>
+            )}
             <Text style={[styles.accountEmail, { color: colors.textSecondary }]}>
               {user?.email}
             </Text>
           </View>
+        </View>
+
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+        <View style={styles.usernameSection}>
+          <View style={styles.usernameLabelRow}>
+            <AtSign color={colors.textSecondary} size={18} />
+            <Text style={[styles.usernameLabel, { color: colors.text }]}>
+              Username
+            </Text>
+            {!isEditingUsername && (
+              <Pressable
+                onPress={() => {
+                  setNewUsername(profile?.username || '');
+                  setIsEditingUsername(true);
+                  setUsernameError('');
+                }}
+              >
+                <Pencil color={colors.textSecondary} size={16} />
+              </Pressable>
+            )}
+          </View>
+          {isEditingUsername ? (
+            <>
+              <View style={styles.usernameInputRow}>
+                <Text style={[styles.usernameAtSign, { color: colors.textSecondary }]}>@</Text>
+                <TextInput
+                  style={[
+                    styles.usernameInput,
+                    {
+                      backgroundColor: isDark ? '#1A1A1A' : '#E5E5E5',
+                      color: colors.text,
+                      borderColor: usernameError ? COLORS.dark.error : 'transparent',
+                      borderWidth: usernameError ? 1 : 0,
+                    },
+                  ]}
+                  placeholder="username"
+                  placeholderTextColor={colors.textSecondary}
+                  value={newUsername}
+                  onChangeText={handleUsernameChange}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoFocus
+                />
+                <TouchableOpacity
+                  style={[
+                    styles.usernameSaveButton,
+                    { opacity: newUsername.length > 4 && !isSavingUsername ? 1 : 0.5 },
+                  ]}
+                  onPress={handleSaveUsername}
+                  disabled={newUsername.length <= 4 || isSavingUsername}
+                >
+                  <Text style={styles.usernameSaveText}>
+                    {isSavingUsername ? 'Saving...' : 'Save'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              {usernameError ? (
+                <Text style={styles.usernameErrorText}>{usernameError}</Text>
+              ) : null}
+              <Pressable onPress={() => {
+                setIsEditingUsername(false);
+                setUsernameError('');
+              }}>
+                <Text style={[styles.usernameCancelText, { color: colors.textSecondary }]}>
+                  Cancel
+                </Text>
+              </Pressable>
+            </>
+          ) : (
+            <Text style={[styles.usernameDisplay, { color: colors.textSecondary }]}>
+              @{profile?.username || 'not set'}
+            </Text>
+          )}
         </View>
 
         <View style={[styles.divider, { backgroundColor: colors.border }]} />
@@ -793,7 +925,11 @@ const styles = StyleSheet.create({
   accountName: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 2,
+    marginBottom: 1,
+  },
+  accountUsername: {
+    fontSize: 13,
+    marginBottom: 1,
   },
   accountEmail: {
     fontSize: 13,
@@ -818,6 +954,60 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     marginLeft: 10,
+  },
+  usernameSection: {
+    marginVertical: 4,
+  },
+  usernameLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  usernameLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    flex: 1,
+  },
+  usernameDisplay: {
+    fontSize: 14,
+  },
+  usernameInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  usernameAtSign: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  usernameInput: {
+    flex: 1,
+    height: 44,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    fontSize: 16,
+  },
+  usernameSaveButton: {
+    backgroundColor: COLORS.accent,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+    height: 44,
+  },
+  usernameSaveText: {
+    color: '#000000',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  usernameErrorText: {
+    fontSize: 12,
+    color: COLORS.dark.error,
+    marginTop: 4,
+  },
+  usernameCancelText: {
+    fontSize: 14,
+    marginTop: 8,
   },
   phoneSection: {
     marginVertical: 4,

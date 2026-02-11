@@ -7,8 +7,8 @@ export async function searchUsers(
 ): Promise<UserSearchResult[]> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, display_name, avatar_url')
-    .ilike('display_name', `%${query}%`)
+    .select('id, username, display_name, avatar_url')
+    .or(`display_name.ilike.%${query}%,username.ilike.%${query}%`)
     .limit(limit);
 
   if (error) {

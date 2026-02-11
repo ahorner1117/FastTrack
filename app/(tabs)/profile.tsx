@@ -4,7 +4,6 @@ import {
   View,
   Text,
   Alert,
-  TextInput,
   Pressable,
   RefreshControl,
 } from 'react-native';
@@ -16,6 +15,7 @@ import { Pencil, Check } from 'lucide-react-native';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
 import { COLORS } from '@/src/utils/constants';
+import { MentionTextInput } from '@/src/components/common/MentionTextInput';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useVehicleStore } from '@/src/stores/vehicleStore';
 import { useFriendsStore } from '@/src/stores/friendsStore';
@@ -208,7 +208,7 @@ export default function ProfileScreen() {
       {/* Bio edit section */}
       {isEditingBio ? (
         <View style={styles.bioEditContainer}>
-          <TextInput
+          <MentionTextInput
             style={[
               styles.bioInput,
               {
@@ -218,6 +218,7 @@ export default function ProfileScreen() {
             ]}
             value={bioText}
             onChangeText={setBioText}
+            isDark={isDark}
             placeholder="Write something about yourself..."
             placeholderTextColor={colors.textSecondary}
             multiline

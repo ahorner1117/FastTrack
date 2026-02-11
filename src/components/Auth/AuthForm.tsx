@@ -20,10 +20,13 @@ interface AuthFormProps {
   password: string;
   confirmPassword?: string;
   displayName?: string;
+  username?: string;
+  usernameError?: string;
   onEmailChange: (email: string) => void;
   onPasswordChange: (password: string) => void;
   onConfirmPasswordChange?: (password: string) => void;
   onDisplayNameChange?: (name: string) => void;
+  onUsernameChange?: (username: string) => void;
   onSubmit: () => void;
   onSwitchMode: () => void;
   isLoading: boolean;
@@ -36,10 +39,13 @@ export function AuthForm({
   password,
   confirmPassword,
   displayName,
+  username,
+  usernameError,
   onEmailChange,
   onPasswordChange,
   onConfirmPasswordChange,
   onDisplayNameChange,
+  onUsernameChange,
   onSubmit,
   onSwitchMode,
   isLoading,
@@ -93,6 +99,43 @@ export function AuthForm({
                   autoCapitalize="words"
                   autoCorrect={false}
                 />
+              </View>
+            )}
+
+            {isSignUp && onUsernameChange && (
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>
+                  Username
+                </Text>
+                <View style={styles.usernameInputRow}>
+                  <Text style={[styles.usernamePrefix, { color: colors.textSecondary }]}>
+                    @
+                  </Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      styles.usernameInput,
+                      {
+                        backgroundColor: colors.surface,
+                        borderColor: usernameError ? COLORS.dark.error : colors.border,
+                        color: colors.text,
+                      },
+                    ]}
+                    placeholder="username"
+                    placeholderTextColor={colors.textSecondary}
+                    value={username}
+                    onChangeText={onUsernameChange}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                </View>
+                {usernameError ? (
+                  <Text style={styles.usernameError}>{usernameError}</Text>
+                ) : (
+                  <Text style={[styles.usernameHint, { color: colors.textTertiary }]}>
+                    Must be more than 4 characters. Letters, numbers, and underscores only.
+                  </Text>
+                )}
               </View>
             )}
 
@@ -229,6 +272,29 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 16,
     fontSize: 16,
+  },
+  usernameInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  usernamePrefix: {
+    fontSize: 18,
+    fontWeight: '500',
+    marginRight: 6,
+  },
+  usernameInput: {
+    flex: 1,
+  },
+  usernameError: {
+    fontSize: 12,
+    color: COLORS.dark.error,
+    marginLeft: 4,
+    marginTop: 2,
+  },
+  usernameHint: {
+    fontSize: 12,
+    marginLeft: 4,
+    marginTop: 2,
   },
   submitButton: {
     height: 52,

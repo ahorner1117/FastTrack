@@ -32,9 +32,16 @@ export function UserSearchCard({ user, isDark, onPress }: UserSearchCardProps) {
           <User color="#000000" size={18} />
         </View>
       )}
-      <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
-        {user.display_name || 'FastTrack User'}
-      </Text>
+      <View style={styles.textContainer}>
+        <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
+          {user.display_name || 'FastTrack User'}
+        </Text>
+        {user.username && (
+          <Text style={[styles.username, { color: colors.textSecondary }]} numberOfLines={1}>
+            @{user.username}
+          </Text>
+        )}
+      </View>
     </Pressable>
   );
 }
@@ -57,9 +64,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  name: {
+  textContainer: {
     flex: 1,
+  },
+  name: {
     fontSize: 15,
     fontWeight: '500',
+  },
+  username: {
+    fontSize: 13,
+    marginTop: 1,
   },
 });

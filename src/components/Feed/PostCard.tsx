@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Heart, MessageCircle, Trash2, MoreVertical, Flag } from 'lucide-react-native';
 import { COLORS } from '@/src/utils/constants';
+import { MentionText } from '@/src/utils/mentions';
 import { ReportModal } from './ReportModal';
 import { reportPost } from '@/src/services/reportingService';
 import type { Post } from '@/src/types';
@@ -153,9 +154,9 @@ export function PostCard({
 
       {/* Caption */}
       {post.caption && (
-        <Text style={[styles.caption, { color: colors.text }]}>
+        <MentionText style={styles.caption} isDark={isDark}>
           {post.caption}
-        </Text>
+        </MentionText>
       )}
 
       {/* Actions */}
