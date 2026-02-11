@@ -67,6 +67,7 @@ export interface Run {
     zeroToHundred?: RunMilestone;
     quarterMile?: RunMilestone;
     halfMile?: RunMilestone;
+    speedMilestones?: Record<number, RunMilestone>; // keyed by mph (10, 20, 30...)
   };
   maxSpeed: number; // m/s
   gpsPoints: GPSPoint[];
@@ -144,6 +145,7 @@ export interface CloudRun {
   quarter_mile_time: number | null;
   half_mile_time: number | null;
   max_speed: number;
+  speed_milestones: Record<string, { speed: number; time: number; distance: number }> | null;
   created_at: string;
 }
 

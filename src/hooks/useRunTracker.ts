@@ -12,6 +12,7 @@ import { calculateDistance } from '../services/locationService';
 import { syncRunToCloud } from '../services/syncService';
 import {
   SPEED_THRESHOLDS,
+  SPEED_MILESTONE_THRESHOLDS_MPH,
   DISTANCE_THRESHOLDS,
   TIMER_UPDATE_INTERVAL_MS,
   GPS_ACCURACY_THRESHOLDS,
@@ -34,6 +35,7 @@ export function useRunTracker() {
     setDistance,
     setElapsedTime,
     setMilestone,
+    setSpeedMilestone,
     addGpsPoint,
     arm,
     start,
@@ -271,8 +273,22 @@ export function useRunTracker() {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
       }
+
+      // Check granular speed milestones (every 10 mph)
+      if (unitSystem === 'imperial') {
+        const existing = milestones.speedMilestones ?? {};
+        for (const { mph, threshold } of SPEED_MILESTONE_THRESHOLDS_MPH) {
+          if (!existing[mph] && speed >= threshold) {
+            setSpeedMilestone(mph, {
+              speed,
+              time: currentElapsed,
+              distance,
+            });
+          }
+        }
+      }
     },
-    [unitSystem, hapticFeedback, setMilestone]
+    [unitSystem, hapticFeedback, setMilestone, setSpeedMilestone]
   );
 
   const checkDistanceMilestones = useCallback(

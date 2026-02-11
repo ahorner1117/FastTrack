@@ -95,6 +95,27 @@ export function RunStatsCard({ run, unitSystem }: RunStatsCardProps) {
           )}
       </View>
 
+      {/* Speed Breakdown Section */}
+      {milestones.speedMilestones &&
+        Object.keys(milestones.speedMilestones).length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Speed Breakdown</Text>
+            {[10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+              .filter((mph) => milestones.speedMilestones?.[mph])
+              .map((mph) => (
+                <StatRow
+                  key={mph}
+                  label={
+                    unitSystem === 'imperial'
+                      ? `0-${mph} mph`
+                      : `0-${mph} mph`
+                  }
+                  value={formatTimeShort(milestones.speedMilestones![mph].time)}
+                />
+              ))}
+          </View>
+        )}
+
       {/* Stats Section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Run Stats</Text>

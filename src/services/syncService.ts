@@ -25,6 +25,15 @@ export async function syncRunToCloud(run: Run): Promise<CloudRun | null> {
     }
   }
 
+  // Map speedMilestones to cloud format (string keys)
+  let speedMilestonesCloud: Record<string, { speed: number; time: number; distance: number }> | null = null;
+  if (run.milestones.speedMilestones) {
+    speedMilestonesCloud = {};
+    for (const [mph, ms] of Object.entries(run.milestones.speedMilestones)) {
+      speedMilestonesCloud[mph] = { speed: ms.speed, time: ms.time, distance: ms.distance };
+    }
+  }
+
   const cloudRun = {
     user_id: user.id,
     local_id: run.id,
@@ -34,6 +43,7 @@ export async function syncRunToCloud(run: Run): Promise<CloudRun | null> {
     quarter_mile_time: run.milestones.quarterMile?.time ?? null,
     half_mile_time: run.milestones.halfMile?.time ?? null,
     max_speed: run.maxSpeed,
+    speed_milestones: speedMilestonesCloud,
   };
 
   const { data, error } = await supabase
@@ -119,6 +129,15 @@ export async function fetchRunsFromCloud(): Promise<StoredRun[]> {
       }
     }
 
+    // Map cloud speed_milestones back to local format (number keys)
+    let speedMilestones: Record<number, { speed: number; time: number; distance: number }> | undefined;
+    if (cr.speed_milestones) {
+      speedMilestones = {};
+      for (const [key, val] of Object.entries(cr.speed_milestones)) {
+        speedMilestones[Number(key)] = val;
+      }
+    }
+
     return {
       id: cr.local_id,
       vehicleId,
@@ -137,6 +156,7 @@ export async function fetchRunsFromCloud(): Promise<StoredRun[]> {
         halfMile: cr.half_mile_time != null
           ? { speed: 0, time: cr.half_mile_time, distance: DISTANCE_THRESHOLDS.HALF_MILE }
           : undefined,
+        speedMilestones,
       },
       maxSpeed: cr.max_speed,
       gpsPoints: [],

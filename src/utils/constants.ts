@@ -39,7 +39,15 @@ export const COLORS = {
 
 // Speed thresholds in m/s
 export const SPEED_THRESHOLDS = {
+  TEN_MPH: 4.4704, // 10 mph in m/s
+  TWENTY_MPH: 8.9408, // 20 mph in m/s
+  THIRTY_MPH: 13.4112, // 30 mph in m/s
+  FORTY_MPH: 17.8816, // 40 mph in m/s
+  FIFTY_MPH: 22.352, // 50 mph in m/s
   SIXTY_MPH: 26.8224, // 60 mph in m/s
+  SEVENTY_MPH: 31.2928, // 70 mph in m/s
+  EIGHTY_MPH: 35.7632, // 80 mph in m/s
+  NINETY_MPH: 40.2336, // 90 mph in m/s
   HUNDRED_MPH: 44.704, // 100 mph in m/s
   SIXTY_KPH: 16.6667, // 60 km/h in m/s
   HUNDRED_KPH: 27.7778, // 100 km/h in m/s
@@ -47,6 +55,20 @@ export const SPEED_THRESHOLDS = {
   MAX_START_SPEED_MPH: 1.34112, // 3 mph in m/s
   MAX_START_SPEED_KPH: 1.38889, // 5 km/h in m/s
 } as const;
+
+// Ordered speed milestone thresholds for granular tracking (imperial only for now)
+export const SPEED_MILESTONE_THRESHOLDS_MPH = [
+  { mph: 10, threshold: 4.4704 },
+  { mph: 20, threshold: 8.9408 },
+  { mph: 30, threshold: 13.4112 },
+  { mph: 40, threshold: 17.8816 },
+  { mph: 50, threshold: 22.352 },
+  { mph: 60, threshold: 26.8224 },
+  { mph: 70, threshold: 31.2928 },
+  { mph: 80, threshold: 35.7632 },
+  { mph: 90, threshold: 40.2336 },
+  { mph: 100, threshold: 44.704 },
+] as const;
 
 // Distance thresholds in meters
 export const DISTANCE_THRESHOLDS = {
