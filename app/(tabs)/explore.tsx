@@ -1,11 +1,13 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useState } from 'react';
 import {
   StyleSheet,
   View,
   Text,
   FlatList,
+  Pressable,
   RefreshControl,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -16,12 +18,16 @@ import Colors from '@/constants/Colors';
 import { COLORS } from '@/src/utils/constants';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useFeedStore } from '@/src/stores/feedStore';
+import { useSearchStore } from '@/src/stores/searchStore';
 import {
-  PostCard,
   CreatePostButton,
-  FeedScopeToggle,
+  SearchBar,
+  UserSearchCard,
 } from '@/src/components/Feed';
-import type { Post } from '@/src/types';
+import { PostGrid } from '@/src/components/Profile/PostGrid';
+import type { Post, UserSearchResult } from '@/src/types';
+
+type SearchTab = 'users' | 'posts';
 
 export default function ExploreScreen() {
   const colorScheme = useColorScheme();
@@ -31,22 +37,33 @@ export default function ExploreScreen() {
 
   const { user } = useAuthStore();
   const {
-    posts,
-    scope,
-    isLoading,
-    isRefreshing,
-    hasMore,
-    setScope,
-    fetchPosts,
-    loadMore,
-    refresh,
-    toggleLike,
-    removePost,
+    explorePosts,
+    isLoadingExplore,
+    isRefreshingExplore,
+    hasMoreExplore,
+    fetchExplorePosts,
+    loadMoreExplore,
+    refreshExplore,
   } = useFeedStore();
 
+  const {
+    query,
+    activeTab,
+    userResults,
+    postResults,
+    isSearching,
+    hasSearched,
+    setQuery,
+    setActiveTab,
+    search,
+    clear,
+  } = useSearchStore();
+
+  const isSearchActive = query.length > 0 || hasSearched;
+
   useEffect(() => {
-    fetchPosts();
-  }, [fetchPosts]);
+    fetchExplorePosts();
+  }, [fetchExplorePosts]);
 
   const handlePostPress = useCallback(
     (post: Post) => {
@@ -55,46 +72,11 @@ export default function ExploreScreen() {
     [router]
   );
 
-  const handleLike = useCallback(
-    async (postId: string) => {
-      if (!user) {
-        Alert.alert('Sign In Required', 'Please sign in to like posts.');
-        return;
-      }
-      try {
-        await toggleLike(postId);
-      } catch {
-        Alert.alert('Error', 'Failed to update like.');
-      }
-    },
-    [user, toggleLike]
-  );
-
-  const handleComment = useCallback(
-    (post: Post) => {
-      router.push(`/posts/${post.id}`);
+  const handleUserPress = useCallback(
+    (userId: string) => {
+      router.push(`/user/${userId}`);
     },
     [router]
-  );
-
-  const handleDelete = useCallback(
-    async (postId: string) => {
-      Alert.alert('Delete Post', 'Are you sure you want to delete this post?', [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await removePost(postId);
-            } catch {
-              Alert.alert('Error', 'Failed to delete post.');
-            }
-          },
-        },
-      ]);
-    },
-    [removePost]
   );
 
   const handleCreatePost = useCallback(() => {
@@ -105,71 +87,166 @@ export default function ExploreScreen() {
     router.push('/posts/create');
   }, [user, router]);
 
-  const renderPost = useCallback(
-    ({ item }: { item: Post }) => (
-      <PostCard
-        post={item}
-        isDark={isDark}
-        currentUserId={user?.id}
-        onPress={() => handlePostPress(item)}
-        onLike={() => handleLike(item.id)}
-        onComment={() => handleComment(item)}
-        onDelete={() => handleDelete(item.id)}
-      />
-    ),
-    [isDark, user, handlePostPress, handleLike, handleComment, handleDelete]
-  );
+  const handleSearch = useCallback(() => {
+    if (query.trim()) {
+      search();
+    }
+  }, [query, search]);
 
-  const renderEmptyList = () => {
-    if (isLoading) return null;
+  const handleClearSearch = useCallback(() => {
+    clear();
+  }, [clear]);
 
+  // Search results view
+  if (isSearchActive) {
     return (
-      <View style={styles.emptyContainer}>
-        <Compass color={colors.textSecondary} size={48} />
-        <Text style={[styles.emptyTitle, { color: colors.text }]}>
-          {scope === 'friends' ? 'No posts from friends' : 'No posts yet'}
-        </Text>
-        <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-          {scope === 'friends'
-            ? 'Add friends to see their posts here'
-            : 'Be the first to share something!'}
-        </Text>
-      </View>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: colors.background }]}
+        edges={['top']}
+      >
+        <View style={styles.header}>
+          <Text style={[styles.title, { color: colors.text }]}>Explore</Text>
+        </View>
+
+        <View style={styles.searchContainer}>
+          <SearchBar
+            value={query}
+            onChangeText={setQuery}
+            onSubmit={handleSearch}
+            onClear={handleClearSearch}
+            isDark={isDark}
+          />
+        </View>
+
+        {/* Search tab toggle */}
+        <View style={styles.searchTabsContainer}>
+          <Pressable
+            style={[
+              styles.searchTab,
+              activeTab === 'users' && {
+                borderBottomColor: COLORS.accent,
+                borderBottomWidth: 2,
+              },
+            ]}
+            onPress={() => setActiveTab('users')}
+          >
+            <Text
+              style={[
+                styles.searchTabText,
+                {
+                  color:
+                    activeTab === 'users'
+                      ? colors.text
+                      : colors.textSecondary,
+                },
+                activeTab === 'users' && styles.searchTabTextActive,
+              ]}
+            >
+              Users
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[
+              styles.searchTab,
+              activeTab === 'posts' && {
+                borderBottomColor: COLORS.accent,
+                borderBottomWidth: 2,
+              },
+            ]}
+            onPress={() => setActiveTab('posts')}
+          >
+            <Text
+              style={[
+                styles.searchTabText,
+                {
+                  color:
+                    activeTab === 'posts'
+                      ? colors.text
+                      : colors.textSecondary,
+                },
+                activeTab === 'posts' && styles.searchTabTextActive,
+              ]}
+            >
+              Vehicles
+            </Text>
+          </Pressable>
+        </View>
+
+        {isSearching ? (
+          <View style={styles.searchLoadingContainer}>
+            <ActivityIndicator size="large" color={COLORS.accent} />
+          </View>
+        ) : activeTab === 'users' ? (
+          <FlatList
+            data={userResults}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }: { item: UserSearchResult }) => (
+              <UserSearchCard
+                user={item}
+                isDark={isDark}
+                onPress={() => handleUserPress(item.id)}
+              />
+            )}
+            contentContainerStyle={[
+              styles.searchListContent,
+              userResults.length === 0 && styles.emptyListContent,
+            ]}
+            ListEmptyComponent={
+              hasSearched ? (
+                <View style={styles.emptyContainer}>
+                  <Text
+                    style={[
+                      styles.emptySubtitle,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    No users found
+                  </Text>
+                </View>
+              ) : null
+            }
+          />
+        ) : (
+          <PostGrid
+            posts={postResults}
+            isDark={isDark}
+            onPostPress={handlePostPress}
+          />
+        )}
+      </SafeAreaView>
     );
-  };
+  }
+
+  // Default explore grid view
+  const gridHeader = (
+    <>
+      <View style={styles.header}>
+        <Text style={[styles.title, { color: colors.text }]}>Explore</Text>
+      </View>
+      <View style={styles.searchContainer}>
+        <SearchBar
+          value={query}
+          onChangeText={setQuery}
+          onSubmit={handleSearch}
+          onClear={handleClearSearch}
+          isDark={isDark}
+        />
+      </View>
+    </>
+  );
 
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
       edges={['top']}
     >
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>Explore</Text>
-        <FeedScopeToggle
-          scope={scope}
-          onScopeChange={setScope}
-          isDark={isDark}
-        />
-      </View>
-
-      <FlatList
-        data={posts}
-        keyExtractor={(item) => item.id}
-        renderItem={renderPost}
-        contentContainerStyle={[
-          styles.listContent,
-          posts.length === 0 && styles.emptyListContent,
-        ]}
-        ListEmptyComponent={renderEmptyList}
-        onEndReached={hasMore ? loadMore : undefined}
-        onEndReachedThreshold={0.5}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={refresh}
-            tintColor={COLORS.accent}
-          />
-        }
+      <PostGrid
+        posts={explorePosts}
+        isDark={isDark}
+        onPostPress={handlePostPress}
+        isLoading={isLoadingExplore}
+        onEndReached={hasMoreExplore ? loadMoreExplore : undefined}
+        ListHeaderComponent={gridHeader}
       />
 
       {user && <CreatePostButton onPress={handleCreatePost} />}
@@ -186,15 +263,42 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 12,
+    paddingBottom: 8,
   },
   title: {
     fontSize: 28,
     fontWeight: '700',
   },
-  listContent: {
+  searchContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  searchTabsContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    marginBottom: 8,
+  },
+  searchTab: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  searchTabText: {
+    fontSize: 15,
+  },
+  searchTabTextActive: {
+    fontWeight: '600',
+  },
+  searchListContent: {
     padding: 16,
-    paddingTop: 0,
+  },
+  searchLoadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   emptyListContent: {
     flex: 1,
@@ -203,12 +307,6 @@ const styles = StyleSheet.create({
   emptyContainer: {
     alignItems: 'center',
     paddingHorizontal: 32,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    marginTop: 16,
-    marginBottom: 8,
   },
   emptySubtitle: {
     fontSize: 14,

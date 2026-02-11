@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -13,7 +13,7 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter, Stack } from 'expo-router';
+import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { ImagePlus, X, ChevronDown } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -22,7 +22,12 @@ import Colors from '@/constants/Colors';
 import { COLORS } from '@/src/utils/constants';
 import { useFeedStore } from '@/src/stores/feedStore';
 import { useVehicleStore } from '@/src/stores/vehicleStore';
-import type { Vehicle } from '@/src/types';
+import { useHistoryStore } from '@/src/stores/historyStore';
+import { useDriveHistoryStore } from '@/src/stores/driveHistoryStore';
+import { useSettingsStore } from '@/src/stores/settingsStore';
+import { VisibilityToggle } from '@/src/components/Feed/VisibilityToggle';
+import { formatTime, formatSpeedWithUnit } from '@/src/utils/formatting';
+import type { Vehicle, PostVisibility } from '@/src/types';
 
 export default function CreatePostScreen() {
   const colorScheme = useColorScheme();
@@ -30,14 +35,36 @@ export default function CreatePostScreen() {
   const colors = Colors[isDark ? 'dark' : 'light'];
   const router = useRouter();
 
+  const { runId, driveId, vehicleId: paramVehicleId } = useLocalSearchParams<{
+    runId?: string;
+    driveId?: string;
+    vehicleId?: string;
+  }>();
+
   const { createNewPost } = useFeedStore();
   const vehicles = useVehicleStore((state) => state.vehicles);
+  const getRunById = useHistoryStore((state) => state.getRunById);
+  const getDriveById = useDriveHistoryStore((state) => state.getDriveById);
+  const unitSystem = useSettingsStore((state) => state.unitSystem);
 
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [caption, setCaption] = useState('');
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+  const [visibility, setVisibility] = useState<PostVisibility>('public');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showVehiclePicker, setShowVehiclePicker] = useState(false);
+
+  // Pre-select vehicle from params
+  useEffect(() => {
+    if (paramVehicleId) {
+      const vehicle = vehicles.find((v) => v.id === paramVehicleId);
+      if (vehicle) setSelectedVehicle(vehicle);
+    }
+  }, [paramVehicleId, vehicles]);
+
+  // Get run/drive data for preview
+  const run = runId ? getRunById(runId) : null;
+  const drive = driveId ? getDriveById(driveId) : null;
 
   const pickImage = useCallback(async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -63,7 +90,10 @@ export default function CreatePostScreen() {
       await createNewPost(
         imageUri,
         caption.trim() || undefined,
-        selectedVehicle?.id
+        selectedVehicle?.id,
+        runId || undefined,
+        driveId || undefined,
+        visibility
       );
       router.back();
     } catch (error: any) {
@@ -166,6 +196,63 @@ export default function CreatePostScreen() {
               multiline
               maxLength={500}
             />
+
+            {/* Visibility Toggle */}
+            <VisibilityToggle
+              visibility={visibility}
+              onVisibilityChange={setVisibility}
+              isDark={isDark}
+            />
+
+            {/* Run/Drive Preview */}
+            {run && (
+              <View
+                style={[
+                  styles.attachmentPreview,
+                  { backgroundColor: colors.surface },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.attachmentLabel,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  Sharing Run
+                </Text>
+                {run.milestones.zeroToSixty && (
+                  <Text style={[styles.attachmentStat, { color: colors.text }]}>
+                    0-60: {formatTime(run.milestones.zeroToSixty.time)}
+                  </Text>
+                )}
+                {run.milestones.quarterMile && (
+                  <Text style={[styles.attachmentStat, { color: colors.text }]}>
+                    1/4 Mile: {formatTime(run.milestones.quarterMile.time)}
+                  </Text>
+                )}
+              </View>
+            )}
+
+            {drive && (
+              <View
+                style={[
+                  styles.attachmentPreview,
+                  { backgroundColor: colors.surface },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.attachmentLabel,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  Sharing Drive
+                </Text>
+                <Text style={[styles.attachmentStat, { color: colors.text }]}>
+                  Max Speed: {formatSpeedWithUnit(drive.maxSpeed, unitSystem)}
+                </Text>
+              </View>
+            )}
 
             {/* Vehicle Selector */}
             {vehicles.length > 0 && (
@@ -304,6 +391,23 @@ const styles = StyleSheet.create({
     minHeight: 100,
     textAlignVertical: 'top',
     marginBottom: 16,
+  },
+  attachmentPreview: {
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  attachmentLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+    textTransform: 'uppercase',
+  },
+  attachmentStat: {
+    fontSize: 15,
+    fontWeight: '500',
+    marginTop: 2,
   },
   label: {
     fontSize: 13,

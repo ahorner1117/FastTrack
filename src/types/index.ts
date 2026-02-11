@@ -116,6 +116,7 @@ export interface Profile {
   display_name: string | null;
   phone_hash: string | null;
   avatar_url: string | null;
+  bio: string | null;
   created_at: string;
   is_admin: boolean;
   tos_accepted_at: string | null;
@@ -210,6 +211,8 @@ export interface LeaderboardEntry {
 }
 
 // Social/Posts Types
+export type PostVisibility = 'public' | 'private';
+
 export interface Post {
   id: string;
   user_id: string;
@@ -217,6 +220,8 @@ export interface Post {
   caption: string | null;
   vehicle_id: string | null;
   run_id: string | null;
+  drive_id: string | null;
+  visibility: PostVisibility;
   likes_count: number;
   comments_count: number;
   created_at: string;
@@ -241,6 +246,23 @@ export interface CreatePostInput {
   caption?: string;
   vehicle_id?: string;
   run_id?: string;
+  drive_id?: string;
+  visibility?: PostVisibility;
+}
+
+export interface UserSearchResult {
+  id: string;
+  display_name: string | null;
+  avatar_url: string | null;
+}
+
+export interface UserProfileData {
+  profile: Profile;
+  vehicles: CloudVehicle[];
+  posts: Post[];
+  postsCount: number;
+  friendshipStatus: 'none' | 'pending_sent' | 'pending_received' | 'accepted';
+  friendshipId?: string;
 }
 
 // Admin & Moderation Types

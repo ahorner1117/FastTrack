@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Post, PostComment } from '../types';
+import type { Post, PostComment, PostVisibility } from '../types';
 import {
   getPosts,
   getPost,
@@ -22,6 +22,12 @@ interface FeedState {
   error: string | null;
   hasMore: boolean;
 
+  // Explore grid (public posts only)
+  explorePosts: Post[];
+  isLoadingExplore: boolean;
+  isRefreshingExplore: boolean;
+  hasMoreExplore: boolean;
+
   // Current post detail
   currentPost: Post | null;
   comments: PostComment[];
@@ -33,13 +39,20 @@ interface FeedState {
   loadMore: () => Promise<void>;
   refresh: () => Promise<void>;
 
+  // Explore actions
+  fetchExplorePosts: () => Promise<void>;
+  loadMoreExplore: () => Promise<void>;
+  refreshExplore: () => Promise<void>;
+
   // Post actions
   fetchPost: (postId: string) => Promise<void>;
   createNewPost: (
     localImageUri: string,
     caption?: string,
     vehicleId?: string,
-    runId?: string
+    runId?: string,
+    driveId?: string,
+    visibility?: PostVisibility
   ) => Promise<Post>;
   removePost: (postId: string) => Promise<void>;
   toggleLike: (postId: string) => Promise<void>;
@@ -61,6 +74,11 @@ export const useFeedStore = create<FeedState>((set, get) => ({
   isRefreshing: false,
   error: null,
   hasMore: true,
+
+  explorePosts: [],
+  isLoadingExplore: false,
+  isRefreshingExplore: false,
+  hasMoreExplore: true,
 
   currentPost: null,
   comments: [],
@@ -121,6 +139,51 @@ export const useFeedStore = create<FeedState>((set, get) => ({
     }
   },
 
+  fetchExplorePosts: async () => {
+    set({ isLoadingExplore: true, error: null });
+    try {
+      const posts = await getPosts('global', PAGE_SIZE, 0, 'public');
+      set({
+        explorePosts: posts,
+        hasMoreExplore: posts.length === PAGE_SIZE,
+        isLoadingExplore: false,
+      });
+    } catch (error: any) {
+      set({ error: error.message, isLoadingExplore: false });
+    }
+  },
+
+  loadMoreExplore: async () => {
+    const { explorePosts, isLoadingExplore, hasMoreExplore } = get();
+    if (isLoadingExplore || !hasMoreExplore) return;
+
+    set({ isLoadingExplore: true });
+    try {
+      const newPosts = await getPosts('global', PAGE_SIZE, explorePosts.length, 'public');
+      set({
+        explorePosts: [...explorePosts, ...newPosts],
+        hasMoreExplore: newPosts.length === PAGE_SIZE,
+        isLoadingExplore: false,
+      });
+    } catch (error: any) {
+      set({ error: error.message, isLoadingExplore: false });
+    }
+  },
+
+  refreshExplore: async () => {
+    set({ isRefreshingExplore: true, error: null });
+    try {
+      const posts = await getPosts('global', PAGE_SIZE, 0, 'public');
+      set({
+        explorePosts: posts,
+        hasMoreExplore: posts.length === PAGE_SIZE,
+        isRefreshingExplore: false,
+      });
+    } catch (error: any) {
+      set({ error: error.message, isRefreshingExplore: false });
+    }
+  },
+
   fetchPost: async (postId: string) => {
     set({ isLoading: true, error: null });
 
@@ -136,7 +199,9 @@ export const useFeedStore = create<FeedState>((set, get) => ({
     localImageUri: string,
     caption?: string,
     vehicleId?: string,
-    runId?: string
+    runId?: string,
+    driveId?: string,
+    visibility?: PostVisibility
   ) => {
     // Generate a temporary ID for the image upload
     const tempId = `temp-${Date.now()}`;
@@ -158,6 +223,8 @@ export const useFeedStore = create<FeedState>((set, get) => ({
         caption,
         vehicle_id: vehicleId,
         run_id: runId,
+        drive_id: driveId,
+        visibility,
       });
 
       // Add to the beginning of posts list
@@ -316,6 +383,10 @@ export const useFeedStore = create<FeedState>((set, get) => ({
       isRefreshing: false,
       error: null,
       hasMore: true,
+      explorePosts: [],
+      isLoadingExplore: false,
+      isRefreshingExplore: false,
+      hasMoreExplore: true,
       currentPost: null,
       comments: [],
       isLoadingComments: false,

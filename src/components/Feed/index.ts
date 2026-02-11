@@ -3,3 +3,6 @@ export { CommentCard } from './CommentCard';
 export { CommentInput } from './CommentInput';
 export { CreatePostButton } from './CreatePostButton';
 export { FeedScopeToggle } from './FeedScopeToggle';
+export { SearchBar } from './SearchBar';
+export { VisibilityToggle } from './VisibilityToggle';
+export { UserSearchCard } from './UserSearchCard';

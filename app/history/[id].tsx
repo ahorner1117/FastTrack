@@ -10,7 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { Trash2, ArrowLeft } from 'lucide-react-native';
+import { Trash2, ArrowLeft, Share2 } from 'lucide-react-native';
 
 import { LocationMap } from '../../src/components/Timer';
 import { RunStatsCard } from '../../src/components/History';
@@ -88,9 +88,22 @@ export default function RunDetailScreen() {
           headerStyle: { backgroundColor: COLORS.dark.background },
           headerTintColor: COLORS.dark.text,
           headerRight: () => (
-            <TouchableOpacity onPress={handleDelete} style={styles.deleteButton}>
-              <Trash2 color={COLORS.dark.error} size={22} />
-            </TouchableOpacity>
+            <View style={styles.headerActions}>
+              <TouchableOpacity
+                onPress={() =>
+                  router.push({
+                    pathname: '/posts/create',
+                    params: { runId: id, vehicleId: run.vehicleId || '' },
+                  } as any)
+                }
+                style={styles.headerButton}
+              >
+                <Share2 color={COLORS.accent} size={22} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleDelete} style={styles.headerButton}>
+                <Trash2 color={COLORS.dark.error} size={22} />
+              </TouchableOpacity>
+            </View>
           ),
         }}
       />
@@ -176,8 +189,12 @@ const styles = StyleSheet.create({
     color: COLORS.accent,
     fontWeight: '500',
   },
-  deleteButton: {
-    padding: 8,
+  headerActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  headerButton: {
+    padding: 4,
   },
   deleteFooterButton: {
     flexDirection: 'row',

@@ -155,6 +155,21 @@ function RootLayoutNav() {
           }}
         />
         <Stack.Screen
+          name="settings"
+          options={{
+            headerShown: true,
+            title: 'Settings',
+            presentation: 'modal',
+          }}
+        />
+        <Stack.Screen
+          name="user/[id]"
+          options={{
+            headerShown: true,
+            headerBackTitle: 'Back',
+          }}
+        />
+        <Stack.Screen
           name="admin"
           options={{
             headerShown: false,

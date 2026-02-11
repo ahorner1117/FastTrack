@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { Timer, Warehouse, Compass, Trophy, Users, Settings } from 'lucide-react-native';
+import { Timer, Warehouse, Compass, Trophy, User } from 'lucide-react-native';
 
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
@@ -64,17 +64,20 @@ export default function TabLayout() {
       <Tabs.Screen
         name="friends"
         options={{
-          title: 'Friends',
-          tabBarIcon: ({ color, size }) => <Users color={color} size={size} />,
+          href: null, // Hidden - accessed from Profile
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'Settings',
-          tabBarIcon: ({ color, size }) => (
-            <Settings color={color} size={size} />
-          ),
+          href: null, // Hidden - old settings tab, replaced by profile
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ color, size }) => <User color={color} size={size} />,
         }}
       />
     </Tabs>

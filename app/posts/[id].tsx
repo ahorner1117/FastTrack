@@ -164,16 +164,26 @@ export default function PostDetailScreen() {
       <View>
         {/* User Header */}
         <View style={styles.userHeader}>
-          <View style={styles.userInfo}>
+          <Pressable
+            style={styles.userInfo}
+            onPress={() => router.push(`/user/${currentPost.user_id}`)}
+          >
             <View
               style={[
                 styles.avatar,
                 { backgroundColor: colors.surfaceElevated },
               ]}
             >
-              <Text style={[styles.avatarText, { color: colors.text }]}>
-                {displayName.charAt(0).toUpperCase()}
-              </Text>
+              {currentPost.profile?.avatar_url ? (
+                <Image
+                  source={{ uri: currentPost.profile.avatar_url }}
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <Text style={[styles.avatarText, { color: colors.text }]}>
+                  {displayName.charAt(0).toUpperCase()}
+                </Text>
+              )}
             </View>
             <View>
               <Text style={[styles.displayName, { color: colors.text }]}>
@@ -185,7 +195,7 @@ export default function PostDetailScreen() {
                 {formatTimeAgo(currentPost.created_at)}
               </Text>
             </View>
-          </View>
+          </Pressable>
           {isOwner && (
             <Pressable onPress={handleDelete} hitSlop={8}>
               <Trash2 color={colors.textSecondary} size={20} />
@@ -367,6 +377,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  avatarImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
   },
   avatarText: {
     fontSize: 16,

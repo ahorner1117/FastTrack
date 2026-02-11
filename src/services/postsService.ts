@@ -1,12 +1,13 @@
 import { supabase } from '../lib/supabase';
-import type { Post, PostComment, CreatePostInput } from '../types';
+import type { Post, PostComment, CreatePostInput, PostVisibility } from '../types';
 
 export type FeedScope = 'global' | 'friends';
 
 export async function getPosts(
   scope: FeedScope,
   limit = 20,
-  offset = 0
+  offset = 0,
+  visibilityFilter?: PostVisibility
 ): Promise<Post[]> {
   const {
     data: { user },
@@ -23,6 +24,10 @@ export async function getPosts(
     )
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1);
+
+  if (visibilityFilter) {
+    query = query.eq('visibility', visibilityFilter);
+  }
 
   if (scope === 'friends' && user) {
     // Get friend IDs first
@@ -134,6 +139,8 @@ export async function createPost(input: CreatePostInput): Promise<Post> {
       caption: input.caption || null,
       vehicle_id: input.vehicle_id || null,
       run_id: input.run_id || null,
+      drive_id: input.drive_id || null,
+      visibility: input.visibility || 'public',
     })
     .select(
       `
@@ -272,4 +279,24 @@ export async function deleteComment(commentId: string): Promise<void> {
     console.error('Error deleting comment:', error);
     throw error;
   }
+}
+
+export async function getUserPosts(
+  userId: string,
+  limit = 30,
+  offset = 0
+): Promise<Post[]> {
+  const { data, error } = await supabase
+    .from('posts')
+    .select('id, image_url, likes_count, comments_count, visibility, created_at, updated_at, user_id, caption, vehicle_id, run_id, drive_id')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error) {
+    console.error('Error fetching user posts:', error);
+    throw error;
+  }
+
+  return (data || []) as Post[];
 }

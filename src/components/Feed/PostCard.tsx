@@ -24,6 +24,7 @@ interface PostCardProps {
   onLike?: () => void;
   onComment?: () => void;
   onDelete?: () => void;
+  onUserPress?: () => void;
 }
 
 function formatTimeAgo(dateString: string): string {
@@ -54,6 +55,7 @@ export function PostCard({
   onLike,
   onComment,
   onDelete,
+  onUserPress,
 }: PostCardProps) {
   const colors = isDark ? COLORS.dark : COLORS.light;
   const isOwner = currentUserId === post.user_id;
@@ -91,7 +93,7 @@ export function PostCard({
     >
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.userInfo}>
+        <Pressable style={styles.userInfo} onPress={onUserPress}>
           <View
             style={[styles.avatar, { backgroundColor: colors.surfaceElevated }]}
           >
@@ -114,7 +116,7 @@ export function PostCard({
               {formatTimeAgo(post.created_at)}
             </Text>
           </View>
-        </View>
+        </Pressable>
         <Pressable onPress={handleMoreOptions} hitSlop={8}>
           <MoreVertical color={colors.textSecondary} size={20} />
         </Pressable>

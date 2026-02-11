@@ -141,7 +141,7 @@ export async function getProfile(userId: string): Promise<Profile | null> {
 
 export async function updateProfile(
   userId: string,
-  updates: Partial<Pick<Profile, 'display_name' | 'phone_hash' | 'avatar_url'>>
+  updates: Partial<Pick<Profile, 'display_name' | 'phone_hash' | 'avatar_url' | 'bio'>>
 ) {
   const { data, error } = await supabase
     .from('profiles')
