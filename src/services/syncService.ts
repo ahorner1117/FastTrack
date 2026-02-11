@@ -34,6 +34,21 @@ export async function syncRunToCloud(run: Run): Promise<CloudRun | null> {
     }
   }
 
+  // Build full milestone data object (preserves speed + distance, not just time)
+  const milestonesData: Record<string, { speed: number; time: number; distance: number }> = {};
+  if (run.milestones.zeroToSixty) {
+    milestonesData.zeroToSixty = run.milestones.zeroToSixty;
+  }
+  if (run.milestones.zeroToHundred) {
+    milestonesData.zeroToHundred = run.milestones.zeroToHundred;
+  }
+  if (run.milestones.quarterMile) {
+    milestonesData.quarterMile = run.milestones.quarterMile;
+  }
+  if (run.milestones.halfMile) {
+    milestonesData.halfMile = run.milestones.halfMile;
+  }
+
   const cloudRun = {
     user_id: user.id,
     local_id: run.id,
@@ -44,6 +59,12 @@ export async function syncRunToCloud(run: Run): Promise<CloudRun | null> {
     half_mile_time: run.milestones.halfMile?.time ?? null,
     max_speed: run.maxSpeed,
     speed_milestones: speedMilestonesCloud,
+    start_time: run.startTime,
+    end_time: run.endTime,
+    gps_points: run.gpsPoints,
+    launch_threshold_g: run.launchDetectionConfig?.thresholdG ?? null,
+    launch_sample_count: run.launchDetectionConfig?.sampleCount ?? null,
+    milestones_data: Object.keys(milestonesData).length > 0 ? milestonesData : null,
   };
 
   const { data, error } = await supabase
@@ -138,29 +159,40 @@ export async function fetchRunsFromCloud(): Promise<StoredRun[]> {
       }
     }
 
+    // Restore full milestone data from milestones_data JSONB if available,
+    // otherwise fall back to individual time columns (backwards compat)
+    const md = cr.milestones_data;
+
     return {
       id: cr.local_id,
       vehicleId,
-      startTime: new Date(cr.created_at).getTime(),
-      endTime: new Date(cr.created_at).getTime(),
+      startTime: cr.start_time ?? new Date(cr.created_at).getTime(),
+      endTime: cr.end_time ?? new Date(cr.created_at).getTime(),
       milestones: {
-        zeroToSixty: cr.zero_to_sixty_time != null
-          ? { speed: SPEED_THRESHOLDS.SIXTY_MPH, time: cr.zero_to_sixty_time, distance: 0 }
-          : undefined,
-        zeroToHundred: cr.zero_to_hundred_time != null
-          ? { speed: SPEED_THRESHOLDS.HUNDRED_MPH, time: cr.zero_to_hundred_time, distance: 0 }
-          : undefined,
-        quarterMile: cr.quarter_mile_time != null
-          ? { speed: 0, time: cr.quarter_mile_time, distance: DISTANCE_THRESHOLDS.QUARTER_MILE }
-          : undefined,
-        halfMile: cr.half_mile_time != null
-          ? { speed: 0, time: cr.half_mile_time, distance: DISTANCE_THRESHOLDS.HALF_MILE }
-          : undefined,
+        zeroToSixty: md?.zeroToSixty
+          ?? (cr.zero_to_sixty_time != null
+            ? { speed: SPEED_THRESHOLDS.SIXTY_MPH, time: cr.zero_to_sixty_time, distance: 0 }
+            : undefined),
+        zeroToHundred: md?.zeroToHundred
+          ?? (cr.zero_to_hundred_time != null
+            ? { speed: SPEED_THRESHOLDS.HUNDRED_MPH, time: cr.zero_to_hundred_time, distance: 0 }
+            : undefined),
+        quarterMile: md?.quarterMile
+          ?? (cr.quarter_mile_time != null
+            ? { speed: 0, time: cr.quarter_mile_time, distance: DISTANCE_THRESHOLDS.QUARTER_MILE }
+            : undefined),
+        halfMile: md?.halfMile
+          ?? (cr.half_mile_time != null
+            ? { speed: 0, time: cr.half_mile_time, distance: DISTANCE_THRESHOLDS.HALF_MILE }
+            : undefined),
         speedMilestones,
       },
       maxSpeed: cr.max_speed,
-      gpsPoints: [],
+      gpsPoints: cr.gps_points ?? [],
       createdAt: new Date(cr.created_at).getTime(),
+      launchDetectionConfig: cr.launch_threshold_g != null && cr.launch_sample_count != null
+        ? { thresholdG: cr.launch_threshold_g, sampleCount: cr.launch_sample_count }
+        : undefined,
       syncedAt: Date.now(), // Already synced since it came from cloud
     };
   });

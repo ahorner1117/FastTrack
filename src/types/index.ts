@@ -135,6 +135,13 @@ export interface Friendship {
   user_profile?: Profile;
 }
 
+export interface CloudRunMilestoneData {
+  zeroToSixty?: { speed: number; time: number; distance: number };
+  zeroToHundred?: { speed: number; time: number; distance: number };
+  quarterMile?: { speed: number; time: number; distance: number };
+  halfMile?: { speed: number; time: number; distance: number };
+}
+
 export interface CloudRun {
   id: string;
   user_id: string;
@@ -146,6 +153,12 @@ export interface CloudRun {
   half_mile_time: number | null;
   max_speed: number;
   speed_milestones: Record<string, { speed: number; time: number; distance: number }> | null;
+  start_time: number | null;
+  end_time: number | null;
+  gps_points: GPSPoint[] | null;
+  launch_threshold_g: number | null;
+  launch_sample_count: number | null;
+  milestones_data: CloudRunMilestoneData | null;
   created_at: string;
 }
 
