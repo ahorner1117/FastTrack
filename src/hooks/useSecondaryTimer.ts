@@ -21,6 +21,10 @@ const GRAVITY_MS2 = 9.81;
 // Number of calibration samples to average for gravity baseline
 const CALIBRATION_SAMPLES = 30; // 300ms at 100Hz
 
+// Dead zone: ignore acceleration below this threshold (in G) to prevent
+// sensor noise from accumulating into phantom speed via integration drift.
+const NOISE_DEAD_ZONE_G = 0.05;
+
 interface Milestones {
   zeroToSixty?: RunMilestone;
   zeroToHundred?: RunMilestone;
@@ -80,8 +84,8 @@ export function useSecondaryTimer({
   const maxSpeedRef = useRef(0);
   const lastSampleTimeRef = useRef<number | null>(null);
 
-  // Gravity calibration
-  const gravityBaselineRef = useRef(1.0); // magnitude in G (expect ~1G at rest)
+  // Gravity calibration — X-axis baseline (matches primary accelerometer)
+  const baselineXRef = useRef(0);
   const calibrationSamplesRef = useRef<number[]>([]);
   const isCalibrated = useRef(false);
 
@@ -99,6 +103,7 @@ export function useSecondaryTimer({
   };
 
   // Start accelerometer subscription for calibration (while armed)
+  // Collects X-axis samples to establish gravity baseline, matching primary accelerometer.
   const startCalibration = () => {
     cleanupAccel();
     calibrationSamplesRef.current = [];
@@ -107,13 +112,11 @@ export function useSecondaryTimer({
     Accelerometer.setUpdateInterval(ACCEL_INTERVAL_MS);
 
     subscriptionRef.current = Accelerometer.addListener((data: AccelerometerMeasurement) => {
-      const magnitude = Math.sqrt(data.x * data.x + data.y * data.y + data.z * data.z);
-      calibrationSamplesRef.current.push(magnitude);
+      calibrationSamplesRef.current.push(data.x);
 
       if (calibrationSamplesRef.current.length >= CALIBRATION_SAMPLES) {
-        // Average the samples for gravity baseline
         const sum = calibrationSamplesRef.current.reduce((a, b) => a + b, 0);
-        gravityBaselineRef.current = sum / calibrationSamplesRef.current.length;
+        baselineXRef.current = sum / calibrationSamplesRef.current.length;
         isCalibrated.current = true;
       }
     });
@@ -145,18 +148,15 @@ export function useSecondaryTimer({
 
       const dtSec = dtMs / 1000;
 
-      // Calculate acceleration magnitude and subtract gravity baseline
-      const magnitude = Math.sqrt(data.x * data.x + data.y * data.y + data.z * data.z);
-      const netAccelG = magnitude - gravityBaselineRef.current;
+      // Use X-axis only (forward direction), subtract calibrated gravity baseline
+      const netAccelG = Math.abs(data.x - baselineXRef.current);
 
-      // Convert G to m/s² and integrate
+      // Dead zone: ignore sensor noise below threshold to prevent drift
+      if (netAccelG < NOISE_DEAD_ZONE_G) return;
+
+      // Convert G to m/s² and integrate acceleration → velocity
       const netAccelMs2 = netAccelG * GRAVITY_MS2;
-
-      // Integrate acceleration → velocity
       speedRef.current += netAccelMs2 * dtSec;
-
-      // Clamp speed to >= 0 (can't go negative in a forward acceleration run)
-      if (speedRef.current < 0) speedRef.current = 0;
 
       // Integrate velocity → distance
       distanceRef.current += speedRef.current * dtSec;
