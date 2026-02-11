@@ -2,7 +2,7 @@
   "expo": {
     "name": "FastTrack",
     "slug": "FastTrack",
-    "version": "1.5.1",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/fasttrack-icon.png",
     "scheme": "fasttrack",
