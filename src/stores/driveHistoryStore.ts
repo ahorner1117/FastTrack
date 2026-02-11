@@ -3,14 +3,21 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Drive } from '../types';
 import { STORAGE_KEYS } from '../utils/constants';
+import { deleteDrivesFromCloud } from '../services/syncService';
+
+// Extend Drive type with sync tracking
+export interface StoredDrive extends Drive {
+  syncedAt?: number;
+}
 
 interface DriveHistoryState {
-  drives: Drive[];
+  drives: StoredDrive[];
   addDrive: (drive: Drive) => void;
   deleteDrive: (id: string) => void;
   deleteDrives: (ids: string[]) => void;
-  getDriveById: (id: string) => Drive | undefined;
-  setDrives: (drives: Drive[]) => void;
+  getDriveById: (id: string) => StoredDrive | undefined;
+  markDriveSynced: (id: string) => void;
+  setDrives: (drives: StoredDrive[]) => void;
   clearHistory: () => void;
 }
 
@@ -21,23 +28,40 @@ export const useDriveHistoryStore = create<DriveHistoryState>()(
 
       addDrive: (drive) =>
         set((state) => ({
-          drives: [drive, ...state.drives],
+          drives: [{ ...drive, syncedAt: undefined }, ...state.drives],
         })),
 
-      deleteDrive: (id) =>
+      deleteDrive: (id) => {
         set((state) => ({
           drives: state.drives.filter((drive) => drive.id !== id),
-        })),
+        }));
+        // Delete from cloud (fire-and-forget)
+        deleteDrivesFromCloud([id]).catch((error) => {
+          console.error('Failed to delete drive from cloud:', error);
+        });
+      },
 
-      deleteDrives: (ids) =>
+      deleteDrives: (ids) => {
         set((state) => ({
           drives: state.drives.filter((drive) => !ids.includes(drive.id)),
-        })),
+        }));
+        // Delete from cloud (fire-and-forget)
+        deleteDrivesFromCloud(ids).catch((error) => {
+          console.error('Failed to delete drives from cloud:', error);
+        });
+      },
 
       getDriveById: (id) => {
         const { drives } = get();
         return drives.find((drive) => drive.id === id);
       },
+
+      markDriveSynced: (id) =>
+        set((state) => ({
+          drives: state.drives.map((drive) =>
+            drive.id === id ? { ...drive, syncedAt: Date.now() } : drive
+          ),
+        })),
 
       setDrives: (drives) => set({ drives }),
 

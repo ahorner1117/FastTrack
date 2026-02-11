@@ -4,6 +4,7 @@ import { useSettingsStore } from '../stores/settingsStore';
 import { useDriveHistoryStore } from '../stores/driveHistoryStore';
 import { useLocation } from './useLocation';
 import { calculateDistance } from '../services/locationService';
+import { syncDriveToCloud } from '../services/syncService';
 import { TIMER_UPDATE_INTERVAL_MS, GPS_ACCURACY_THRESHOLDS } from '../utils/constants';
 import type { GPSPoint, Drive } from '../types';
 
@@ -14,6 +15,7 @@ export type DriveStatus = 'idle' | 'ready' | 'tracking' | 'paused' | 'completed'
 export function useDriveTracker() {
   const { gpsAccuracy, hapticFeedback, unitSystem, defaultVehicleId } = useSettingsStore();
   const addDrive = useDriveHistoryStore((state) => state.addDrive);
+  const markDriveSynced = useDriveHistoryStore((state) => state.markDriveSynced);
 
   const {
     hasPermission,
@@ -180,6 +182,17 @@ export function useDriveTracker() {
         createdAt: Date.now(),
       };
       addDrive(completedDrive);
+
+      // Sync drive to cloud in background
+      syncDriveToCloud(completedDrive)
+        .then((cloudDrive) => {
+          if (cloudDrive) {
+            markDriveSynced(completedDrive.id);
+          }
+        })
+        .catch((error) => {
+          console.error('Failed to sync drive to cloud:', error);
+        });
     }
 
     setStatus('completed');

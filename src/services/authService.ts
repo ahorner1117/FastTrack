@@ -5,13 +5,16 @@ import { useVehicleStore } from '../stores/vehicleStore';
 import { useHistoryStore } from '../stores/historyStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useRunStore } from '../stores/runStore';
+import { useDriveHistoryStore } from '../stores/driveHistoryStore';
 import { useFriendsStore } from '../stores/friendsStore';
 import { useFeedStore } from '../stores/feedStore';
 import {
   syncAllUnsyncedRuns,
+  syncAllUnsyncedDrives,
   syncAllVehicles,
   fetchVehiclesFromCloud,
   fetchRunsFromCloud,
+  fetchDrivesFromCloud,
 } from './syncService';
 import { STORAGE_KEYS } from '../utils/constants';
 import type { Profile } from '../types';
@@ -106,6 +109,7 @@ export async function signOut() {
   useAuthStore.getState().reset();
   useVehicleStore.getState().reset();
   useHistoryStore.getState().clearHistory();
+  useDriveHistoryStore.getState().clearHistory();
   useSettingsStore.getState().resetToDefaults();
   useRunStore.getState().reset();
   useFriendsStore.getState().reset();
@@ -115,6 +119,7 @@ export async function signOut() {
   await AsyncStorage.multiRemove([
     STORAGE_KEYS.VEHICLES,
     STORAGE_KEYS.RUNS,
+    STORAGE_KEYS.DRIVES,
     STORAGE_KEYS.SETTINGS,
   ]);
 }
@@ -188,12 +193,14 @@ export async function initializeAuth() {
           // uploaded to the new user's account.
           useVehicleStore.getState().reset();
           useHistoryStore.getState().clearHistory();
+          useDriveHistoryStore.getState().clearHistory();
           useRunStore.getState().reset();
           useFriendsStore.getState().reset();
           useFeedStore.getState().reset();
           await AsyncStorage.multiRemove([
             STORAGE_KEYS.VEHICLES,
             STORAGE_KEYS.RUNS,
+            STORAGE_KEYS.DRIVES,
           ]);
 
           // Restore user's data from cloud after clearing stale data
@@ -225,7 +232,14 @@ async function restoreAndSync() {
     useHistoryStore.getState().setRuns(cloudRuns);
   }
 
-  // 3. Push any local-only data up to cloud
+  // 3. Restore drives from cloud
+  const cloudDrives = await fetchDrivesFromCloud();
+  if (cloudDrives.length > 0) {
+    useDriveHistoryStore.getState().setDrives(cloudDrives);
+  }
+
+  // 4. Push any local-only data up to cloud
   await syncAllVehicles();
   await syncAllUnsyncedRuns();
+  await syncAllUnsyncedDrives();
 }

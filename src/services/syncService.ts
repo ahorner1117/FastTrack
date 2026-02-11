@@ -1,7 +1,8 @@
 import { supabase } from '../lib/supabase';
 import { useHistoryStore, type StoredRun } from '../stores/historyStore';
+import { useDriveHistoryStore, type StoredDrive } from '../stores/driveHistoryStore';
 import { useVehicleStore } from '../stores/vehicleStore';
-import type { Run, CloudRun, CloudVehicle, Vehicle, VehicleType, VehicleUpgrade } from '../types';
+import type { Run, Drive, CloudRun, CloudDrive, CloudVehicle, Vehicle, VehicleType, VehicleUpgrade } from '../types';
 import { SPEED_THRESHOLDS, DISTANCE_THRESHOLDS } from '../utils/constants';
 
 // ─── Run Sync (existing) ────────────────────────────────────────────
@@ -216,6 +217,138 @@ export async function deleteRunsFromCloud(runLocalIds: string[]): Promise<void> 
 
   if (error) {
     console.error('Error deleting runs from cloud:', error);
+    throw error;
+  }
+}
+
+// ─── Drive Sync ─────────────────────────────────────────────────────
+
+export async function syncDriveToCloud(drive: Drive): Promise<CloudDrive | null> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    console.log('Cannot sync drive: user not authenticated');
+    return null;
+  }
+
+  // Get vehicle name if available
+  let vehicleName: string | null = null;
+  if (drive.vehicleId) {
+    const vehicle = useVehicleStore.getState().getVehicleById(drive.vehicleId);
+    if (vehicle) {
+      vehicleName = `${vehicle.year} ${vehicle.make} ${vehicle.model}`;
+    }
+  }
+
+  const cloudDrive = {
+    user_id: user.id,
+    local_id: drive.id,
+    vehicle_name: vehicleName,
+    start_time: drive.startTime,
+    end_time: drive.endTime,
+    distance: drive.distance,
+    max_speed: drive.maxSpeed,
+    avg_speed: drive.avgSpeed,
+    gps_points: drive.gpsPoints,
+  };
+
+  const { data, error } = await supabase
+    .from('drives')
+    .upsert(cloudDrive, { onConflict: 'local_id' })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error syncing drive:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+export async function syncAllUnsyncedDrives(): Promise<number> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return 0;
+  }
+
+  const { drives, markDriveSynced } = useDriveHistoryStore.getState();
+  const unsyncedDrives = drives.filter((drive) => !drive.syncedAt);
+
+  let syncedCount = 0;
+
+  for (const drive of unsyncedDrives) {
+    try {
+      const cloudDrive = await syncDriveToCloud(drive);
+      if (cloudDrive) {
+        markDriveSynced(drive.id);
+        syncedCount++;
+      }
+    } catch (error) {
+      console.error(`Failed to sync drive ${drive.id}:`, error);
+    }
+  }
+
+  return syncedCount;
+}
+
+export async function fetchDrivesFromCloud(): Promise<StoredDrive[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from('drives')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching drives from cloud:', error);
+    return [];
+  }
+
+  return (data || []).map((cd: CloudDrive) => ({
+    id: cd.local_id,
+    vehicleId: null,
+    startTime: cd.start_time,
+    endTime: cd.end_time,
+    distance: cd.distance,
+    maxSpeed: cd.max_speed,
+    avgSpeed: cd.avg_speed,
+    gpsPoints: cd.gps_points ?? [],
+    createdAt: new Date(cd.created_at).getTime(),
+    syncedAt: Date.now(),
+  }));
+}
+
+export async function deleteDrivesFromCloud(driveLocalIds: string[]): Promise<void> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    console.log('Cannot delete drives: user not authenticated');
+    return;
+  }
+
+  const { error } = await supabase
+    .from('drives')
+    .delete()
+    .eq('user_id', user.id)
+    .in('local_id', driveLocalIds);
+
+  if (error) {
+    console.error('Error deleting drives from cloud:', error);
     throw error;
   }
 }

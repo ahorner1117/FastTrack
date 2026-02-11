@@ -142,6 +142,20 @@ export interface CloudRunMilestoneData {
   halfMile?: { speed: number; time: number; distance: number };
 }
 
+export interface CloudDrive {
+  id: string;
+  user_id: string;
+  local_id: string;
+  vehicle_name: string | null;
+  start_time: number;
+  end_time: number;
+  distance: number;
+  max_speed: number;
+  avg_speed: number;
+  gps_points: GPSPoint[];
+  created_at: string;
+}
+
 export interface CloudRun {
   id: string;
   user_id: string;
