@@ -20,6 +20,7 @@ interface RunStoreState extends TimerState {
   ) => void;
   setSpeedMilestone: (mph: number, milestone: RunMilestone) => void;
   setAccelMilestone: (key: keyof AccelMilestones, milestone: RunMilestone) => void;
+  setAccelSpeedMilestone: (mph: number, milestone: RunMilestone) => void;
   arm: () => void;
   start: (gpsTimestamp: number) => void;
   stop: () => void;
@@ -91,6 +92,17 @@ export const useRunStore = create<RunStoreState>()((set, get) => ({
       accelMilestones: {
         ...state.accelMilestones,
         [key]: milestone,
+      },
+    })),
+
+  setAccelSpeedMilestone: (mph, milestone) =>
+    set((state) => ({
+      accelMilestones: {
+        ...state.accelMilestones,
+        speedMilestones: {
+          ...state.accelMilestones.speedMilestones,
+          [mph]: milestone,
+        },
       },
     })),
 

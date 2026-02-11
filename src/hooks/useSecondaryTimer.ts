@@ -1,31 +1,38 @@
 import { useEffect, useRef, useState } from 'react';
-import { calculateDistance } from '../services/locationService';
-import type { LocationData } from '../services/locationService';
-import type { RunMilestone, UnitSystem, GPSAccuracy } from '../types';
+import { Accelerometer, type AccelerometerMeasurement } from 'expo-sensors';
+import type { RunMilestone, UnitSystem } from '../types';
 import { useRunStore } from '../stores/runStore';
 import {
   SPEED_THRESHOLDS,
   DISTANCE_THRESHOLDS,
+  SPEED_MILESTONE_THRESHOLDS_MPH,
   TIMER_UPDATE_INTERVAL_MS,
-  GPS_ACCURACY_THRESHOLDS,
 } from '../utils/constants';
 
 type PrimaryStatus = 'idle' | 'ready' | 'armed' | 'running' | 'completed';
 type SecondaryStatus = 'idle' | 'armed' | 'running' | 'completed';
+
+// Accelerometer update interval (10ms = 100Hz)
+const ACCEL_INTERVAL_MS = 10;
+
+// Gravity constant
+const GRAVITY_MS2 = 9.81;
+
+// Number of calibration samples to average for gravity baseline
+const CALIBRATION_SAMPLES = 30; // 300ms at 100Hz
 
 interface Milestones {
   zeroToSixty?: RunMilestone;
   zeroToHundred?: RunMilestone;
   quarterMile?: RunMilestone;
   halfMile?: RunMilestone;
+  speedMilestones?: Record<number, RunMilestone>;
 }
 
 interface UseSecondaryTimerOptions {
   primaryStatus: PrimaryStatus;
   primaryStartTime: number | null; // Wall-clock launch timestamp from accelerometer
-  currentLocation: LocationData | null;
   unitSystem: UnitSystem;
-  gpsAccuracy: GPSAccuracy;
 }
 
 interface UseSecondaryTimerResult {
@@ -33,63 +40,235 @@ interface UseSecondaryTimerResult {
   elapsedTime: number;
   milestones: Milestones;
   maxSpeed: number;
+  currentSpeed: number; // m/s — accelerometer-derived speed
 }
 
 /**
- * Secondary "accelerometer timer" — shares the primary accelerometer's launch
- * detection and records milestone times using wall-clock elapsed time
- * (Date.now() − launchTimestamp) instead of GPS timestamps.
+ * Secondary "accelerometer timer" — uses ONLY accelerometer data to compute
+ * speed via integration (no GPS). Shares the primary accelerometer's launch
+ * detection timestamp but independently tracks velocity by integrating
+ * measured acceleration at 100Hz (10ms intervals).
  *
- * GPS speed still determines WHEN milestones are crossed; only the elapsed
- * time recorded at each milestone differs from the primary timer.
+ * Speed = integral of (net forward acceleration) over time.
+ * Distance = integral of speed over time.
+ *
+ * Gravity baseline is calibrated while armed (stationary).
  */
 export function useSecondaryTimer({
   primaryStatus,
   primaryStartTime,
-  currentLocation,
   unitSystem,
-  gpsAccuracy,
 }: UseSecondaryTimerOptions): UseSecondaryTimerResult {
   const setAccelMilestone = useRunStore((state) => state.setAccelMilestone);
+  const setAccelSpeedMilestone = useRunStore((state) => state.setAccelSpeedMilestone);
 
   const [status, setStatus] = useState<SecondaryStatus>('idle');
   const [elapsedTime, setElapsedTime] = useState(0);
   const [milestones, setMilestones] = useState<Milestones>({});
   const [maxSpeed, setMaxSpeed] = useState(0);
+  const [currentSpeed, setCurrentSpeed] = useState(0);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const launchTimeRef = useRef<number | null>(null);
-  const lastPointRef = useRef<{ lat: number; lon: number; timestamp: number } | null>(null);
-  const totalDistanceRef = useRef(0);
   const milestonesRef = useRef<Milestones>({});
   const statusRef = useRef<SecondaryStatus>('idle');
+
+  // Accelerometer integration state
+  const subscriptionRef = useRef<ReturnType<typeof Accelerometer.addListener> | null>(null);
+  const speedRef = useRef(0); // m/s — integrated from acceleration
+  const distanceRef = useRef(0); // meters — integrated from speed
+  const maxSpeedRef = useRef(0);
+  const lastSampleTimeRef = useRef<number | null>(null);
+
+  // Gravity calibration
+  const gravityBaselineRef = useRef(1.0); // magnitude in G (expect ~1G at rest)
+  const calibrationSamplesRef = useRef<number[]>([]);
+  const isCalibrated = useRef(false);
 
   // Keep statusRef in sync
   useEffect(() => {
     statusRef.current = status;
   }, [status]);
 
+  // Cleanup accelerometer subscription
+  const cleanupAccel = () => {
+    if (subscriptionRef.current) {
+      subscriptionRef.current.remove();
+      subscriptionRef.current = null;
+    }
+  };
+
+  // Start accelerometer subscription for calibration (while armed)
+  const startCalibration = () => {
+    cleanupAccel();
+    calibrationSamplesRef.current = [];
+    isCalibrated.current = false;
+
+    Accelerometer.setUpdateInterval(ACCEL_INTERVAL_MS);
+
+    subscriptionRef.current = Accelerometer.addListener((data: AccelerometerMeasurement) => {
+      const magnitude = Math.sqrt(data.x * data.x + data.y * data.y + data.z * data.z);
+      calibrationSamplesRef.current.push(magnitude);
+
+      if (calibrationSamplesRef.current.length >= CALIBRATION_SAMPLES) {
+        // Average the samples for gravity baseline
+        const sum = calibrationSamplesRef.current.reduce((a, b) => a + b, 0);
+        gravityBaselineRef.current = sum / calibrationSamplesRef.current.length;
+        isCalibrated.current = true;
+      }
+    });
+  };
+
+  // Start accelerometer subscription for speed integration (while running)
+  const startIntegration = () => {
+    cleanupAccel();
+    speedRef.current = 0;
+    distanceRef.current = 0;
+    maxSpeedRef.current = 0;
+    lastSampleTimeRef.current = Date.now();
+
+    Accelerometer.setUpdateInterval(ACCEL_INTERVAL_MS);
+
+    subscriptionRef.current = Accelerometer.addListener((data: AccelerometerMeasurement) => {
+      const now = Date.now();
+      const prevTime = lastSampleTimeRef.current;
+      if (!prevTime) {
+        lastSampleTimeRef.current = now;
+        return;
+      }
+
+      const dtMs = now - prevTime;
+      lastSampleTimeRef.current = now;
+
+      // Skip unreasonable dt (> 100ms means we missed samples)
+      if (dtMs <= 0 || dtMs > 100) return;
+
+      const dtSec = dtMs / 1000;
+
+      // Calculate acceleration magnitude and subtract gravity baseline
+      const magnitude = Math.sqrt(data.x * data.x + data.y * data.y + data.z * data.z);
+      const netAccelG = magnitude - gravityBaselineRef.current;
+
+      // Convert G to m/s² and integrate
+      const netAccelMs2 = netAccelG * GRAVITY_MS2;
+
+      // Integrate acceleration → velocity
+      speedRef.current += netAccelMs2 * dtSec;
+
+      // Clamp speed to >= 0 (can't go negative in a forward acceleration run)
+      if (speedRef.current < 0) speedRef.current = 0;
+
+      // Integrate velocity → distance
+      distanceRef.current += speedRef.current * dtSec;
+
+      // Track max speed
+      if (speedRef.current > maxSpeedRef.current) {
+        maxSpeedRef.current = speedRef.current;
+        setMaxSpeed(maxSpeedRef.current);
+      }
+
+      // Update display speed
+      setCurrentSpeed(speedRef.current);
+
+      // Check milestones
+      if (!launchTimeRef.current) return;
+      const currentElapsed = now - launchTimeRef.current;
+      const speed = speedRef.current;
+      const distance = distanceRef.current;
+
+      // --- Speed milestones (granular 10 mph increments) ---
+      for (const { mph, threshold } of SPEED_MILESTONE_THRESHOLDS_MPH) {
+        if (!milestonesRef.current.speedMilestones?.[mph] && speed >= threshold) {
+          const milestone: RunMilestone = { speed, time: currentElapsed, distance };
+          milestonesRef.current = {
+            ...milestonesRef.current,
+            speedMilestones: {
+              ...milestonesRef.current.speedMilestones,
+              [mph]: milestone,
+            },
+          };
+          setMilestones({ ...milestonesRef.current });
+          setAccelSpeedMilestone(mph, milestone);
+        }
+      }
+
+      // --- 0-60 / 0-100 milestones ---
+      const sixtyThreshold = unitSystem === 'imperial'
+        ? SPEED_THRESHOLDS.SIXTY_MPH
+        : SPEED_THRESHOLDS.SIXTY_KPH;
+
+      if (!milestonesRef.current.zeroToSixty && speed >= sixtyThreshold) {
+        const milestone: RunMilestone = { speed, time: currentElapsed, distance };
+        milestonesRef.current = { ...milestonesRef.current, zeroToSixty: milestone };
+        setMilestones({ ...milestonesRef.current });
+        setAccelMilestone('zeroToSixty', milestone);
+      }
+
+      const hundredThreshold = unitSystem === 'imperial'
+        ? SPEED_THRESHOLDS.HUNDRED_MPH
+        : SPEED_THRESHOLDS.HUNDRED_KPH;
+
+      if (!milestonesRef.current.zeroToHundred && speed >= hundredThreshold) {
+        const milestone: RunMilestone = { speed, time: currentElapsed, distance };
+        milestonesRef.current = { ...milestonesRef.current, zeroToHundred: milestone };
+        setMilestones({ ...milestonesRef.current });
+        setAccelMilestone('zeroToHundred', milestone);
+      }
+
+      // --- Distance milestones ---
+      const quarterThreshold = unitSystem === 'imperial'
+        ? DISTANCE_THRESHOLDS.QUARTER_MILE
+        : DISTANCE_THRESHOLDS.QUARTER_KM;
+
+      if (!milestonesRef.current.quarterMile && distance >= quarterThreshold) {
+        const milestone: RunMilestone = { speed, time: currentElapsed, distance };
+        milestonesRef.current = { ...milestonesRef.current, quarterMile: milestone };
+        setMilestones({ ...milestonesRef.current });
+        setAccelMilestone('quarterMile', milestone);
+      }
+
+      const halfThreshold = unitSystem === 'imperial'
+        ? DISTANCE_THRESHOLDS.HALF_MILE
+        : DISTANCE_THRESHOLDS.HALF_KM;
+
+      if (!milestonesRef.current.halfMile && distance >= halfThreshold) {
+        const milestone: RunMilestone = { speed, time: currentElapsed, distance };
+        milestonesRef.current = { ...milestonesRef.current, halfMile: milestone };
+        setMilestones({ ...milestonesRef.current });
+        setAccelMilestone('halfMile', milestone);
+      }
+    });
+  };
+
   // Sync with primary timer status
   useEffect(() => {
     if (primaryStatus === 'armed' && statusRef.current === 'idle') {
-      // Arm when primary arms — reset all state
+      // Arm — reset all state and start gravity calibration
       setStatus('armed');
       statusRef.current = 'armed';
       setElapsedTime(0);
       setMilestones({});
       setMaxSpeed(0);
+      setCurrentSpeed(0);
       milestonesRef.current = {};
       launchTimeRef.current = null;
-      lastPointRef.current = null;
-      totalDistanceRef.current = 0;
+      speedRef.current = 0;
+      distanceRef.current = 0;
+      maxSpeedRef.current = 0;
+      lastSampleTimeRef.current = null;
+
+      // Start calibration while stationary
+      startCalibration();
+
     } else if (primaryStatus === 'running' && statusRef.current === 'armed' && primaryStartTime) {
-      // Primary launched — start secondary timer from same accelerometer timestamp
+      // Primary launched — start integration from same accelerometer timestamp
       launchTimeRef.current = primaryStartTime;
-      totalDistanceRef.current = 0;
-      lastPointRef.current = null;
 
       setStatus('running');
       statusRef.current = 'running';
+
+      // Start accelerometer integration for speed tracking
+      startIntegration();
 
       // Start display timer from the accelerometer launch timestamp
       timerRef.current = setInterval(() => {
@@ -97,116 +276,40 @@ export function useSecondaryTimer({
           setElapsedTime(Date.now() - launchTimeRef.current);
         }
       }, TIMER_UPDATE_INTERVAL_MS);
+
     } else if (primaryStatus === 'idle' || primaryStatus === 'ready') {
       // Primary reset or disarmed — reset secondary
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
+      cleanupAccel();
       launchTimeRef.current = null;
-      lastPointRef.current = null;
-      totalDistanceRef.current = 0;
+      speedRef.current = 0;
+      distanceRef.current = 0;
+      maxSpeedRef.current = 0;
+      lastSampleTimeRef.current = null;
       milestonesRef.current = {};
+      isCalibrated.current = false;
+      calibrationSamplesRef.current = [];
       setStatus('idle');
       statusRef.current = 'idle';
       setElapsedTime(0);
       setMilestones({});
       setMaxSpeed(0);
+      setCurrentSpeed(0);
+
     } else if (primaryStatus === 'completed' && statusRef.current === 'running') {
       // Primary stopped — stop secondary too
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
+      cleanupAccel();
       setStatus('completed');
       statusRef.current = 'completed';
     }
   }, [primaryStatus, primaryStartTime]);
-
-  // Process GPS updates while running
-  useEffect(() => {
-    if (!currentLocation || statusRef.current !== 'running' || !launchTimeRef.current) return;
-
-    const rawSpeed = Math.max(0, currentLocation.speed ?? 0);
-
-    // Track max speed
-    if (rawSpeed > maxSpeed) {
-      setMaxSpeed(rawSpeed);
-    }
-
-    // Accuracy filter
-    const accuracy = currentLocation.accuracy ?? 999;
-    const maxAcceptableAccuracy = GPS_ACCURACY_THRESHOLDS[gpsAccuracy] * 2;
-    const isGoodAccuracy = accuracy <= maxAcceptableAccuracy;
-
-    if (isGoodAccuracy) {
-      if (lastPointRef.current) {
-        const segmentDistance = calculateDistance(
-          lastPointRef.current.lat,
-          lastPointRef.current.lon,
-          currentLocation.latitude,
-          currentLocation.longitude
-        );
-        totalDistanceRef.current += segmentDistance;
-      }
-
-      lastPointRef.current = {
-        lat: currentLocation.latitude,
-        lon: currentLocation.longitude,
-        timestamp: currentLocation.timestamp,
-      };
-    }
-
-    // Check milestones — wall-clock elapsed time from accelerometer launch
-    const currentElapsed = Date.now() - launchTimeRef.current;
-    const distance = totalDistanceRef.current;
-
-    // Speed milestones
-    const sixtyThreshold = unitSystem === 'imperial'
-      ? SPEED_THRESHOLDS.SIXTY_MPH
-      : SPEED_THRESHOLDS.SIXTY_KPH;
-
-    if (!milestonesRef.current.zeroToSixty && rawSpeed >= sixtyThreshold) {
-      const milestone: RunMilestone = { speed: rawSpeed, time: currentElapsed, distance };
-      milestonesRef.current = { ...milestonesRef.current, zeroToSixty: milestone };
-      setMilestones({ ...milestonesRef.current });
-      setAccelMilestone('zeroToSixty', milestone);
-    }
-
-    const hundredThreshold = unitSystem === 'imperial'
-      ? SPEED_THRESHOLDS.HUNDRED_MPH
-      : SPEED_THRESHOLDS.HUNDRED_KPH;
-
-    if (!milestonesRef.current.zeroToHundred && rawSpeed >= hundredThreshold) {
-      const milestone: RunMilestone = { speed: rawSpeed, time: currentElapsed, distance };
-      milestonesRef.current = { ...milestonesRef.current, zeroToHundred: milestone };
-      setMilestones({ ...milestonesRef.current });
-      setAccelMilestone('zeroToHundred', milestone);
-    }
-
-    // Distance milestones
-    const quarterThreshold = unitSystem === 'imperial'
-      ? DISTANCE_THRESHOLDS.QUARTER_MILE
-      : DISTANCE_THRESHOLDS.QUARTER_KM;
-
-    if (!milestonesRef.current.quarterMile && distance >= quarterThreshold) {
-      const milestone: RunMilestone = { speed: rawSpeed, time: currentElapsed, distance };
-      milestonesRef.current = { ...milestonesRef.current, quarterMile: milestone };
-      setMilestones({ ...milestonesRef.current });
-      setAccelMilestone('quarterMile', milestone);
-    }
-
-    const halfThreshold = unitSystem === 'imperial'
-      ? DISTANCE_THRESHOLDS.HALF_MILE
-      : DISTANCE_THRESHOLDS.HALF_KM;
-
-    if (!milestonesRef.current.halfMile && distance >= halfThreshold) {
-      const milestone: RunMilestone = { speed: rawSpeed, time: currentElapsed, distance };
-      milestonesRef.current = { ...milestonesRef.current, halfMile: milestone };
-      setMilestones({ ...milestonesRef.current });
-      setAccelMilestone('halfMile', milestone);
-    }
-  }, [currentLocation, gpsAccuracy, unitSystem, maxSpeed, setAccelMilestone]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -214,6 +317,7 @@ export function useSecondaryTimer({
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
+      cleanupAccel();
     };
   }, []);
 
@@ -222,5 +326,6 @@ export function useSecondaryTimer({
     elapsedTime,
     milestones,
     maxSpeed,
+    currentSpeed,
   };
 }

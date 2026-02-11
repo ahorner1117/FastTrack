@@ -50,6 +50,28 @@ export async function syncRunToCloud(run: Run): Promise<CloudRun | null> {
     milestonesData.halfMile = run.milestones.halfMile;
   }
 
+  // Build accel milestones data for cloud sync
+  const accelMilestonesData: Record<string, { speed: number; time: number; distance: number }> = {};
+  if (run.accelMilestones) {
+    if (run.accelMilestones.zeroToSixty) {
+      accelMilestonesData.zeroToSixty = run.accelMilestones.zeroToSixty;
+    }
+    if (run.accelMilestones.zeroToHundred) {
+      accelMilestonesData.zeroToHundred = run.accelMilestones.zeroToHundred;
+    }
+    if (run.accelMilestones.quarterMile) {
+      accelMilestonesData.quarterMile = run.accelMilestones.quarterMile;
+    }
+    if (run.accelMilestones.halfMile) {
+      accelMilestonesData.halfMile = run.accelMilestones.halfMile;
+    }
+    if (run.accelMilestones.speedMilestones) {
+      for (const [mph, ms] of Object.entries(run.accelMilestones.speedMilestones)) {
+        accelMilestonesData[`speed_${mph}`] = { speed: ms.speed, time: ms.time, distance: ms.distance };
+      }
+    }
+  }
+
   const cloudRun = {
     user_id: user.id,
     local_id: run.id,
@@ -66,6 +88,7 @@ export async function syncRunToCloud(run: Run): Promise<CloudRun | null> {
     launch_threshold_g: run.launchDetectionConfig?.thresholdG ?? null,
     launch_sample_count: run.launchDetectionConfig?.sampleCount ?? null,
     milestones_data: Object.keys(milestonesData).length > 0 ? milestonesData : null,
+    accel_milestones_data: Object.keys(accelMilestonesData).length > 0 ? accelMilestonesData : null,
   };
 
   const { data, error } = await supabase
@@ -164,6 +187,33 @@ export async function fetchRunsFromCloud(): Promise<StoredRun[]> {
     // otherwise fall back to individual time columns (backwards compat)
     const md = cr.milestones_data;
 
+    // Restore accel milestones from cloud JSONB
+    let accelMilestones: import('../types').AccelMilestones | undefined;
+    if (cr.accel_milestones_data) {
+      const amd = cr.accel_milestones_data;
+      const accelSpeedMilestones: Record<number, { speed: number; time: number; distance: number }> = {};
+      for (const [key, val] of Object.entries(amd)) {
+        if (key.startsWith('speed_')) {
+          accelSpeedMilestones[Number(key.replace('speed_', ''))] = val;
+        }
+      }
+      accelMilestones = {
+        zeroToSixty: amd.zeroToSixty,
+        zeroToHundred: amd.zeroToHundred,
+        quarterMile: amd.quarterMile,
+        halfMile: amd.halfMile,
+        ...(Object.keys(accelSpeedMilestones).length > 0
+          ? { speedMilestones: accelSpeedMilestones }
+          : {}),
+      };
+      // Only set if there's actual data
+      if (!accelMilestones.zeroToSixty && !accelMilestones.zeroToHundred &&
+          !accelMilestones.quarterMile && !accelMilestones.halfMile &&
+          Object.keys(accelSpeedMilestones).length === 0) {
+        accelMilestones = undefined;
+      }
+    }
+
     return {
       id: cr.local_id,
       vehicleId,
@@ -188,6 +238,7 @@ export async function fetchRunsFromCloud(): Promise<StoredRun[]> {
             : undefined),
         speedMilestones,
       },
+      accelMilestones,
       maxSpeed: cr.max_speed,
       gpsPoints: cr.gps_points ?? [],
       createdAt: new Date(cr.created_at).getTime(),

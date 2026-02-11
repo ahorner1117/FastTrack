@@ -62,6 +62,7 @@ export interface AccelMilestones {
   zeroToHundred?: RunMilestone;
   quarterMile?: RunMilestone;
   halfMile?: RunMilestone;
+  speedMilestones?: Record<number, RunMilestone>; // keyed by mph (10, 20, 30...)
 }
 
 export interface Run {
@@ -183,6 +184,7 @@ export interface CloudRun {
   launch_threshold_g: number | null;
   launch_sample_count: number | null;
   milestones_data: CloudRunMilestoneData | null;
+  accel_milestones_data: Record<string, { speed: number; time: number; distance: number }> | null;
   created_at: string;
 }
 

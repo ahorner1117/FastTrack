@@ -139,6 +139,23 @@ export function RunStatsCard({ run, unitSystem }: RunStatsCardProps) {
         </View>
       )}
 
+      {/* Accel Speed Breakdown Section */}
+      {run.accelMilestones?.speedMilestones &&
+        Object.keys(run.accelMilestones.speedMilestones).length > 0 && (
+          <View style={[styles.section, styles.accelSection]}>
+            <Text style={styles.accelSectionTitle}>Accel Speed Breakdown</Text>
+            {[10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+              .filter((mph) => run.accelMilestones?.speedMilestones?.[mph])
+              .map((mph) => (
+                <StatRow
+                  key={`accel-${mph}`}
+                  label={`0-${mph} mph`}
+                  value={formatTimeShort(run.accelMilestones!.speedMilestones![mph].time)}
+                />
+              ))}
+          </View>
+        )}
+
       {/* Speed Breakdown Section */}
       {milestones.speedMilestones &&
         Object.keys(milestones.speedMilestones).length > 0 && (

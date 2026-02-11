@@ -36,13 +36,11 @@ export default function TimerScreen() {
   // Drive tracking mode hook
   const driveTracker = useDriveTracker();
 
-  // Secondary accelerometer timer (shares primary launch detection, wall-clock milestone timing)
+  // Secondary accelerometer timer (shares primary launch detection, accel-only speed via integration)
   const secondaryTimer = useSecondaryTimer({
     primaryStatus: runTracker.status,
     primaryStartTime: runTracker.startTime,
-    currentLocation: runTracker.currentLocation,
     unitSystem,
-    gpsAccuracy,
   });
   const gpsPoints = useRunStore((state) => state.gpsPoints);
   const vehicles = useVehicleStore((state) => state.vehicles);
