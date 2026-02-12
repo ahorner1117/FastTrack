@@ -170,6 +170,13 @@ export default function TimerScreen() {
         ) : (
           // DRIVE TRACKING MODE
           <>
+            {/* Vehicle Selector - only show if user has vehicles */}
+            {vehicles.length > 0 && (
+              <VehicleSelector
+                disabled={driveTracker.status === 'tracking'}
+              />
+            )}
+
             {/* Speed Display */}
             <View style={styles.speedSection}>
               <SpeedDisplay

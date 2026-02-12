@@ -84,9 +84,11 @@ export function useSecondaryTimer({
   const maxSpeedRef = useRef(0);
   const lastSampleTimeRef = useRef<number | null>(null);
 
-  // Gravity calibration — X-axis baseline (matches primary accelerometer)
+  // Gravity calibration — full 3D vector baseline (orientation-independent)
   const baselineXRef = useRef(0);
-  const calibrationSamplesRef = useRef<number[]>([]);
+  const baselineYRef = useRef(0);
+  const baselineZRef = useRef(0);
+  const calibrationSamplesRef = useRef<{ x: number; y: number; z: number }[]>([]);
   const isCalibrated = useRef(false);
 
   // Keep statusRef in sync
@@ -112,11 +114,16 @@ export function useSecondaryTimer({
     Accelerometer.setUpdateInterval(ACCEL_INTERVAL_MS);
 
     subscriptionRef.current = Accelerometer.addListener((data: AccelerometerMeasurement) => {
-      calibrationSamplesRef.current.push(data.x);
+      calibrationSamplesRef.current.push({ x: data.x, y: data.y, z: data.z });
 
       if (calibrationSamplesRef.current.length >= CALIBRATION_SAMPLES) {
-        const sum = calibrationSamplesRef.current.reduce((a, b) => a + b, 0);
-        baselineXRef.current = sum / calibrationSamplesRef.current.length;
+        const samples = calibrationSamplesRef.current;
+        const sumX = samples.reduce((a, s) => a + s.x, 0);
+        const sumY = samples.reduce((a, s) => a + s.y, 0);
+        const sumZ = samples.reduce((a, s) => a + s.z, 0);
+        baselineXRef.current = sumX / samples.length;
+        baselineYRef.current = sumY / samples.length;
+        baselineZRef.current = sumZ / samples.length;
         isCalibrated.current = true;
       }
     });
@@ -148,8 +155,12 @@ export function useSecondaryTimer({
 
       const dtSec = dtMs / 1000;
 
-      // Use X-axis only (forward direction), subtract calibrated gravity baseline
-      const netAccelG = Math.abs(data.x - baselineXRef.current);
+      // Subtract calibrated 3D gravity vector, compute magnitude for
+      // orientation-independent acceleration (works at any phone angle)
+      const dx = data.x - baselineXRef.current;
+      const dy = data.y - baselineYRef.current;
+      const dz = data.z - baselineZRef.current;
+      const netAccelG = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
       // Dead zone: ignore sensor noise below threshold to prevent drift
       if (netAccelG < NOISE_DEAD_ZONE_G) return;
@@ -292,6 +303,9 @@ export function useSecondaryTimer({
       milestonesRef.current = {};
       isCalibrated.current = false;
       calibrationSamplesRef.current = [];
+      baselineXRef.current = 0;
+      baselineYRef.current = 0;
+      baselineZRef.current = 0;
       setStatus('idle');
       statusRef.current = 'idle';
       setElapsedTime(0);

@@ -13,6 +13,7 @@ import {
   Plus,
   Car,
   History,
+  Route,
   Warehouse,
   Trash2,
   X,
@@ -23,14 +24,15 @@ import {
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
 import { VehicleCard } from '@/src/components/Garage';
-import { RunCard } from '@/src/components/History';
+import { RunCard, DriveCard } from '@/src/components/History';
 import { useVehicleStore } from '@/src/stores/vehicleStore';
 import { useHistoryStore } from '@/src/stores/historyStore';
+import { useDriveHistoryStore } from '@/src/stores/driveHistoryStore';
 import { useSettingsStore } from '@/src/stores/settingsStore';
 import { COLORS } from '@/src/utils/constants';
-import type { Run } from '@/src/types';
+import type { Run, Drive } from '@/src/types';
 
-type GarageTab = 'vehicles' | 'runs';
+type GarageTab = 'vehicles' | 'runs' | 'drives';
 
 export default function GarageScreen() {
   const router = useRouter();
@@ -49,7 +51,11 @@ export default function GarageScreen() {
   const deleteRuns = useHistoryStore((state) => state.deleteRuns);
   const unitSystem = useSettingsStore((state) => state.unitSystem);
 
-  // Selection state for runs
+  // Drives state
+  const drives = useDriveHistoryStore((state) => state.drives);
+  const deleteDrives = useDriveHistoryStore((state) => state.deleteDrives);
+
+  // Selection state (shared for runs and drives)
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -73,6 +79,10 @@ export default function GarageScreen() {
 
   const handleRunPress = (run: Run) => {
     router.push(`/history/${run.id}`);
+  };
+
+  const handleDrivePress = (drive: Drive) => {
+    router.push(`/history/drive/${drive.id}`);
   };
 
   const toggleSelectMode = useCallback(() => {
@@ -99,8 +109,12 @@ export default function GarageScreen() {
   );
 
   const selectAll = useCallback(() => {
-    setSelectedIds(new Set(runs.map((r) => r.id)));
-  }, [runs]);
+    if (activeTab === 'runs') {
+      setSelectedIds(new Set(runs.map((r) => r.id)));
+    } else if (activeTab === 'drives') {
+      setSelectedIds(new Set(drives.map((d) => d.id)));
+    }
+  }, [activeTab, runs, drives]);
 
   const deselectAll = useCallback(() => {
     setSelectedIds(new Set());
@@ -109,23 +123,30 @@ export default function GarageScreen() {
   const handleDeleteSelected = useCallback(() => {
     if (selectedIds.size === 0) return;
 
+    const isRuns = activeTab === 'runs';
+    const label = isRuns ? 'run' : 'drive';
+
     Alert.alert(
-      'Delete Runs',
-      `Are you sure you want to delete ${selectedIds.size} run${selectedIds.size > 1 ? 's' : ''}? This cannot be undone.`,
+      `Delete ${isRuns ? 'Runs' : 'Drives'}`,
+      `Are you sure you want to delete ${selectedIds.size} ${label}${selectedIds.size > 1 ? 's' : ''}? This cannot be undone.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
           style: 'destructive',
           onPress: () => {
-            deleteRuns(Array.from(selectedIds));
+            if (isRuns) {
+              deleteRuns(Array.from(selectedIds));
+            } else {
+              deleteDrives(Array.from(selectedIds));
+            }
             setSelectedIds(new Set());
             setIsSelecting(false);
           },
         },
       ]
     );
-  }, [selectedIds, deleteRuns]);
+  }, [selectedIds, activeTab, deleteRuns, deleteDrives]);
 
   // Reset selection when switching tabs
   const handleTabChange = (tab: GarageTab) => {
@@ -134,7 +155,8 @@ export default function GarageScreen() {
     setSelectedIds(new Set());
   };
 
-  const allSelected = selectedIds.size === runs.length && runs.length > 0;
+  const currentList = activeTab === 'runs' ? runs : drives;
+  const allSelected = selectedIds.size === currentList.length && currentList.length > 0;
 
   // Segmented toggle component
   const renderToggle = () => (
@@ -193,6 +215,33 @@ export default function GarageScreen() {
           Runs
         </Text>
       </Pressable>
+      <Pressable
+        style={[
+          styles.toggleButton,
+          {
+            backgroundColor:
+              activeTab === 'drives'
+                ? COLORS.accent
+                : isDark
+                  ? COLORS.dark.surface
+                  : COLORS.light.surface,
+          },
+        ]}
+        onPress={() => handleTabChange('drives')}
+      >
+        <Route
+          color={activeTab === 'drives' ? '#000000' : colors.text}
+          size={18}
+        />
+        <Text
+          style={[
+            styles.toggleText,
+            { color: activeTab === 'drives' ? '#000000' : colors.text },
+          ]}
+        >
+          Drives
+        </Text>
+      </Pressable>
     </View>
   );
 
@@ -228,9 +277,9 @@ export default function GarageScreen() {
     </View>
   );
 
-  // Runs toolbar
-  const renderRunsToolbar = () => {
-    if (runs.length === 0) return null;
+  // Selection toolbar (shared for runs and drives)
+  const renderSelectionToolbar = () => {
+    if (currentList.length === 0) return null;
 
     return (
       <View style={[styles.toolbar, { borderBottomColor: colors.border }]}>
@@ -380,14 +429,54 @@ export default function GarageScreen() {
     );
   };
 
+  // Drives empty state
+  const renderDrivesEmpty = () => (
+    <View style={styles.emptyState}>
+      <Route color={tertiaryColor} size={64} />
+      <Text style={[styles.title, { color: colors.text }]}>No Drives Yet</Text>
+      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+        Track a drive to see it here
+      </Text>
+    </View>
+  );
+
+  // Drives list
+  const renderDrivesList = () => {
+    if (drives.length === 0) {
+      return renderDrivesEmpty();
+    }
+
+    return (
+      <FlatList
+        data={drives}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <DriveCard
+            drive={item}
+            unitSystem={unitSystem}
+            onPress={() => handleDrivePress(item)}
+            isSelecting={isSelecting}
+            isSelected={selectedIds.has(item.id)}
+            onToggleSelect={() => toggleSelectRun(item.id)}
+            vehicleName={getVehicleName(item.vehicleId)}
+          />
+        )}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+      />
+    );
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         {renderToggle()}
       </View>
-      {activeTab === 'runs' && renderRunsToolbar()}
+      {(activeTab === 'runs' || activeTab === 'drives') && renderSelectionToolbar()}
       <View style={styles.content}>
-        {activeTab === 'vehicles' ? renderVehiclesList() : renderRunsList()}
+        {activeTab === 'vehicles' && renderVehiclesList()}
+        {activeTab === 'runs' && renderRunsList()}
+        {activeTab === 'drives' && renderDrivesList()}
       </View>
     </View>
   );

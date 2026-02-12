@@ -49,13 +49,14 @@ export function useAccelerometer({
   const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onLaunchDetectedRef = useRef(onLaunchDetected);
 
-  // Gravity calibration: collect X-axis samples during settle period to
-  // establish a baseline. This baseline is subtracted from subsequent
-  // readings so that gravity leaking onto the X-axis (due to phone tilt)
-  // does not trigger a false launch.
-  // X-axis = forward/backward when phone is mounted with screen facing driver.
-  const calibrationSamplesRef = useRef<number[]>([]);
+  // Gravity calibration: collect full 3D samples during settle period to
+  // establish the gravity vector baseline. This vector is subtracted from
+  // subsequent readings so that acceleration detection is orientation-independent
+  // (works with phone horizontal, vertical, or at any angle).
+  const calibrationSamplesRef = useRef<{ x: number; y: number; z: number }[]>([]);
   const baselineXRef = useRef(0);
+  const baselineYRef = useRef(0);
+  const baselineZRef = useRef(0);
 
   // Keep callback ref updated
   useEffect(() => {
@@ -79,6 +80,8 @@ export function useAccelerometer({
     settledRef.current = false;
     calibrationSamplesRef.current = [];
     baselineXRef.current = 0;
+    baselineYRef.current = 0;
+    baselineZRef.current = 0;
     if (settleTimerRef.current) {
       clearTimeout(settleTimerRef.current);
       settleTimerRef.current = null;
@@ -107,10 +110,15 @@ export function useAccelerometer({
     consecutiveCountRef.current = 0;
     calibrationSamplesRef.current = [];
     settleTimerRef.current = setTimeout(() => {
-      // Compute gravity baseline from samples collected during settle period
-      if (calibrationSamplesRef.current.length > 0) {
-        const sum = calibrationSamplesRef.current.reduce((a, b) => a + b, 0);
-        baselineXRef.current = sum / calibrationSamplesRef.current.length;
+      // Compute full 3D gravity baseline from samples collected during settle period
+      const samples = calibrationSamplesRef.current;
+      if (samples.length > 0) {
+        const sumX = samples.reduce((a, s) => a + s.x, 0);
+        const sumY = samples.reduce((a, s) => a + s.y, 0);
+        const sumZ = samples.reduce((a, s) => a + s.z, 0);
+        baselineXRef.current = sumX / samples.length;
+        baselineYRef.current = sumY / samples.length;
+        baselineZRef.current = sumZ / samples.length;
       }
       calibrationSamplesRef.current = [];
       settledRef.current = true;
@@ -121,18 +129,21 @@ export function useAccelerometer({
     subscriptionRef.current = Accelerometer.addListener((data) => {
       setRawData(data);
 
-      // During settle period, collect X-axis samples for gravity calibration
+      // During settle period, collect full 3D samples for gravity calibration
       // but don't report acceleration or attempt launch detection
       if (!settledRef.current) {
-        calibrationSamplesRef.current.push(data.x);
+        calibrationSamplesRef.current.push({ x: data.x, y: data.y, z: data.z });
         setCurrentAcceleration(0);
         return;
       }
 
-      // Use X-axis as forward acceleration (phone mounted with screen facing driver)
-      // Subtract calibrated gravity baseline so that phone tilt doesn't
-      // register as forward acceleration
-      const calibratedAccelG = Math.abs(data.x - baselineXRef.current);
+      // Subtract calibrated 3D gravity vector, then compute magnitude.
+      // This is orientation-independent: works with phone horizontal, vertical,
+      // or at any angle since we remove the exact gravity vector measured at rest.
+      const dx = data.x - baselineXRef.current;
+      const dy = data.y - baselineYRef.current;
+      const dz = data.z - baselineZRef.current;
+      const calibratedAccelG = Math.sqrt(dx * dx + dy * dy + dz * dz);
       setCurrentAcceleration(calibratedAccelG);
 
       // Launch detection logic — only after settle/calibration period
