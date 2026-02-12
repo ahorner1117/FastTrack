@@ -8,7 +8,8 @@ import {
   Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Trophy, Users, Globe } from 'lucide-react-native';
+import { Trophy, Users, Globe, UserPlus } from 'lucide-react-native';
+import { router } from 'expo-router';
 
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
@@ -220,6 +221,19 @@ export default function LeaderboardScreen() {
               color={scope === 'friends' ? '#000000' : colors.text}
               size={18}
             />
+          </Pressable>
+          <Pressable
+            style={[
+              styles.scopeButton,
+              {
+                backgroundColor: isDark
+                  ? COLORS.dark.surface
+                  : COLORS.light.surface,
+              },
+            ]}
+            onPress={() => router.push('/friends/add')}
+          >
+            <UserPlus color={colors.text} size={18} />
           </Pressable>
         </View>
       </View>
