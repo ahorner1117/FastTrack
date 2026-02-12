@@ -48,6 +48,11 @@ export function useAccelerometer({
   const settledRef = useRef(false);
   const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onLaunchDetectedRef = useRef(onLaunchDetected);
+  const lastDisplayUpdateRef = useRef(0);
+
+  // Throttle interval for display-only state updates (ms).
+  // Keeps 100Hz sensor processing for detection but avoids flooding React renders.
+  const DISPLAY_THROTTLE_MS = 100;
 
   // Gravity calibration: collect full 3D samples during settle period to
   // establish the gravity vector baseline. This vector is subtracted from
@@ -127,13 +132,10 @@ export function useAccelerometer({
 
     // Subscribe to accelerometer data
     subscriptionRef.current = Accelerometer.addListener((data) => {
-      setRawData(data);
-
       // During settle period, collect full 3D samples for gravity calibration
-      // but don't report acceleration or attempt launch detection
+      // but don't attempt launch detection
       if (!settledRef.current) {
         calibrationSamplesRef.current.push({ x: data.x, y: data.y, z: data.z });
-        setCurrentAcceleration(0);
         return;
       }
 
@@ -144,7 +146,15 @@ export function useAccelerometer({
       const dy = data.y - baselineYRef.current;
       const dz = data.z - baselineZRef.current;
       const calibratedAccelG = Math.sqrt(dx * dx + dy * dy + dz * dz);
-      setCurrentAcceleration(calibratedAccelG);
+
+      // Throttle display state updates to avoid flooding React renders.
+      // Detection logic below still runs at full 100Hz.
+      const now = Date.now();
+      if (now - lastDisplayUpdateRef.current >= DISPLAY_THROTTLE_MS) {
+        lastDisplayUpdateRef.current = now;
+        setRawData(data);
+        setCurrentAcceleration(calibratedAccelG);
+      }
 
       // Launch detection logic — only after settle/calibration period
       if (!launchDetectedRef.current) {

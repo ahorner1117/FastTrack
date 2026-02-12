@@ -90,6 +90,11 @@ export function useSecondaryTimer({
   const baselineZRef = useRef(0);
   const calibrationSamplesRef = useRef<{ x: number; y: number; z: number }[]>([]);
   const isCalibrated = useRef(false);
+  const lastDisplayUpdateRef = useRef(0);
+
+  // Throttle interval for display-only state updates (ms).
+  // Keeps 100Hz sensor processing for integration/milestones but avoids flooding React renders.
+  const DISPLAY_THROTTLE_MS = 100;
 
   // Keep statusRef in sync
   useEffect(() => {
@@ -172,14 +177,18 @@ export function useSecondaryTimer({
       // Integrate velocity → distance
       distanceRef.current += speedRef.current * dtSec;
 
-      // Track max speed
+      // Track max speed (ref-only, always at 100Hz)
       if (speedRef.current > maxSpeedRef.current) {
         maxSpeedRef.current = speedRef.current;
-        setMaxSpeed(maxSpeedRef.current);
       }
 
-      // Update display speed
-      setCurrentSpeed(speedRef.current);
+      // Throttle display state updates to avoid flooding React renders.
+      // Integration + milestone logic above still runs at full 100Hz.
+      if (now - lastDisplayUpdateRef.current >= DISPLAY_THROTTLE_MS) {
+        lastDisplayUpdateRef.current = now;
+        setCurrentSpeed(speedRef.current);
+        setMaxSpeed(maxSpeedRef.current);
+      }
 
       // Check milestones
       if (!launchTimeRef.current) return;
