@@ -21,9 +21,6 @@
         "NSLocationAlwaysAndWhenInUseUsageDescription": "FastTrack uses your location to measure vehicle speed and distance for acceleration timing.",
         "NSMotionUsageDescription": "FastTrack uses motion sensors to enhance speed measurement accuracy.",
         "NSContactsUsageDescription": "FastTrack uses your contacts to help you find and connect with friends who also use the app.",
-        "UIBackgroundModes": [
-          "location"
-        ],
         "ITSAppUsesNonExemptEncryption": false
       }
     },
