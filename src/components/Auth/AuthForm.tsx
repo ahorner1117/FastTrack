@@ -29,7 +29,10 @@ interface AuthFormProps {
   onUsernameChange?: (username: string) => void;
   onSubmit: () => void;
   onSwitchMode: () => void;
+  onForgotPassword?: () => void;
+  onGoogleSignIn?: () => void;
   isLoading: boolean;
+  isGoogleLoading?: boolean;
   isDark: boolean;
 }
 
@@ -48,7 +51,10 @@ export function AuthForm({
   onUsernameChange,
   onSubmit,
   onSwitchMode,
+  onForgotPassword,
+  onGoogleSignIn,
   isLoading,
+  isGoogleLoading,
   isDark,
 }: AuthFormProps) {
   const colors = isDark ? COLORS.dark : COLORS.light;
@@ -178,6 +184,14 @@ export function AuthForm({
               />
             </View>
 
+            {!isSignUp && onForgotPassword && (
+              <TouchableOpacity onPress={onForgotPassword} style={styles.forgotPassword}>
+                <Text style={[styles.forgotPasswordText, { color: COLORS.accent }]}>
+                  Forgot Password?
+                </Text>
+              </TouchableOpacity>
+            )}
+
             {isSignUp && onConfirmPasswordChange && (
               <View style={styles.inputGroup}>
                 <Text style={[styles.label, { color: colors.textSecondary }]}>
@@ -212,6 +226,34 @@ export function AuthForm({
                 </Text>
               )}
             </TouchableOpacity>
+
+            {!isSignUp && onGoogleSignIn && (
+              <>
+                <View style={styles.divider}>
+                  <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+                  <Text style={[styles.dividerText, { color: colors.textSecondary }]}>or</Text>
+                  <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+                </View>
+
+                <TouchableOpacity
+                  style={[
+                    styles.googleButton,
+                    { borderColor: colors.border },
+                    isGoogleLoading && styles.submitButtonDisabled,
+                  ]}
+                  onPress={onGoogleSignIn}
+                  disabled={isGoogleLoading || isLoading}
+                >
+                  {isGoogleLoading ? (
+                    <ActivityIndicator color={colors.text} />
+                  ) : (
+                    <Text style={[styles.googleButtonText, { color: colors.text }]}>
+                      Continue with Google
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </>
+            )}
           </View>
 
           <View style={styles.footer}>
@@ -296,6 +338,14 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     marginTop: 2,
   },
+  forgotPassword: {
+    alignSelf: 'flex-end',
+    marginTop: -8,
+  },
+  forgotPasswordText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
   submitButton: {
     height: 52,
     borderRadius: 12,
@@ -308,6 +358,30 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     color: '#000000',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 4,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+  },
+  dividerText: {
+    marginHorizontal: 16,
+    fontSize: 14,
+  },
+  googleButton: {
+    height: 52,
+    borderRadius: 12,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  googleButtonText: {
     fontSize: 16,
     fontWeight: '600',
   },

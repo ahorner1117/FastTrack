@@ -1,4 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../stores/authStore';
 import { useVehicleStore } from '../stores/vehicleStore';
@@ -179,6 +181,80 @@ export async function updateProfile(
   return data as Profile;
 }
 
+export async function resetPasswordForEmail(email: string) {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: 'fasttrack://reset-password',
+  });
+
+  if (error) {
+    throw error;
+  }
+}
+
+export async function updatePassword(newPassword: string) {
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+
+  if (error) {
+    throw error;
+  }
+}
+
+export async function signInWithGoogle() {
+  const redirectTo = Linking.createURL('google-auth');
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo,
+      skipBrowserRedirect: true,
+    },
+  });
+
+  if (error) throw error;
+  if (!data.url) throw new Error('No OAuth URL returned');
+
+  const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+
+  if (result.type !== 'success') {
+    throw new Error('Google sign-in was cancelled');
+  }
+
+  const url = result.url;
+  // Tokens can be in the fragment (#) or query (?) depending on the flow
+  const fragment = url.split('#')[1];
+  if (!fragment) {
+    throw new Error('No authentication data returned');
+  }
+
+  const params = new URLSearchParams(fragment);
+  const accessToken = params.get('access_token');
+  const refreshToken = params.get('refresh_token');
+
+  if (!accessToken || !refreshToken) {
+    throw new Error('Missing authentication tokens');
+  }
+
+  const { error: sessionError } = await supabase.auth.setSession({
+    access_token: accessToken,
+    refresh_token: refreshToken,
+  });
+
+  if (sessionError) throw sessionError;
+}
+
+async function createProfileForOAuthUser(userId: string, email: string, displayName?: string) {
+  const { error } = await supabase.from('profiles').insert({
+    id: userId,
+    email,
+    display_name: displayName || null,
+  });
+
+  // Ignore duplicate key errors (profile already exists)
+  if (error && error.code !== '23505') {
+    console.error('Error creating OAuth profile:', error);
+  }
+}
+
 export async function initializeAuth() {
   const { setSession, setProfile, setIsLoading } = useAuthStore.getState();
 
@@ -192,7 +268,19 @@ export async function initializeAuth() {
 
     // Fetch profile if logged in
     if (session?.user) {
-      const profile = await getProfile(session.user.id);
+      let profile = await getProfile(session.user.id);
+
+      // Auto-create profile for OAuth users who don't have one yet
+      if (!profile) {
+        const meta = session.user.user_metadata;
+        await createProfileForOAuthUser(
+          session.user.id,
+          session.user.email || '',
+          meta?.full_name || meta?.name || meta?.display_name
+        );
+        profile = await getProfile(session.user.id);
+      }
+
       setProfile(profile);
 
       // Restore data from cloud and sync any local changes in background
@@ -206,7 +294,19 @@ export async function initializeAuth() {
       setSession(session);
 
       if (session?.user) {
-        const profile = await getProfile(session.user.id);
+        let profile = await getProfile(session.user.id);
+
+        // Auto-create profile for OAuth users who don't have one yet
+        if (!profile) {
+          const meta = session.user.user_metadata;
+          await createProfileForOAuthUser(
+            session.user.id,
+            session.user.email || '',
+            meta?.full_name || meta?.name || meta?.display_name
+          );
+          profile = await getProfile(session.user.id);
+        }
+
         setProfile(profile);
 
         if (event === 'SIGNED_IN') {

@@ -2,6 +2,7 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { useFonts } from 'expo-font';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import * as Linking from 'expo-linking';
 import { useEffect, useState } from 'react';
 import 'react-native-reanimated';
 
@@ -9,6 +10,7 @@ import { useColorScheme } from '@/components/useColorScheme';
 import { useSettingsStore } from '@/src/stores/settingsStore';
 import { useAuthStore } from '@/src/stores/authStore';
 import { initializeAuth } from '@/src/services/authService';
+import { supabase } from '@/src/lib/supabase';
 import { COLORS } from '@/src/utils/constants';
 import { RPMGauge } from '@/src/components/Loading';
 
@@ -99,11 +101,51 @@ function useProtectedRoute() {
   }, [isAuthenticated, isLoading, segments, profile?.username]);
 }
 
+function handleResetPasswordDeepLink(url: string, router: ReturnType<typeof useRouter>) {
+  if (!url.includes('reset-password')) return;
+
+  const fragment = url.split('#')[1];
+  if (!fragment) return;
+
+  const params = new URLSearchParams(fragment);
+  const accessToken = params.get('access_token');
+  const refreshToken = params.get('refresh_token');
+
+  if (accessToken && refreshToken) {
+    supabase.auth
+      .setSession({ access_token: accessToken, refresh_token: refreshToken })
+      .then(() => {
+        router.replace('/(auth)/reset-password' as any);
+      })
+      .catch((err) => {
+        console.error('Error setting session from reset link:', err);
+      });
+  }
+}
+
 function RootLayoutNav() {
   const systemColorScheme = useColorScheme();
   const { appearance } = useSettingsStore();
+  const router = useRouter();
 
   useProtectedRoute();
+
+  // Handle deep links for password reset
+  useEffect(() => {
+    // Handle URL when app is already open
+    const subscription = Linking.addEventListener('url', ({ url }) => {
+      handleResetPasswordDeepLink(url, router);
+    });
+
+    // Handle URL when app is cold-started
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        handleResetPasswordDeepLink(url, router);
+      }
+    });
+
+    return () => subscription.remove();
+  }, [router]);
 
   const colorScheme =
     appearance === 'system' ? systemColorScheme : appearance;
