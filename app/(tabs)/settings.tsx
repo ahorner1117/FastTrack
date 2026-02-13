@@ -22,7 +22,7 @@ import { Card } from '@/src/components/common/Card';
 import { Toggle } from '@/src/components/common/Toggle';
 import { checkUsernameAvailable, getProfile, signOut, updateProfile } from '@/src/services/authService';
 import { deleteAvatar, uploadAvatar } from '@/src/services/avatarService';
-import { hashPhoneNumber } from '@/src/services/contactsService';
+import { supabase } from '@/src/lib/supabase';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useSettingsStore } from '@/src/stores/settingsStore';
 import type { Appearance, GPSAccuracy, UnitSystem } from '@/src/types';
@@ -243,7 +243,12 @@ export default function SettingsScreen() {
   const { user, profile, isAdmin, setProfile } = useAuthStore();
 
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [isSavingPhone, setIsSavingPhone] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+
+  const [verificationRequestId, setVerificationRequestId] = useState<string | null>(null);
+  const [otpSent, setOtpSent] = useState(false);
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isEditingUsername, setIsEditingUsername] = useState(false);
   const [newUsername, setNewUsername] = useState(profile?.username || '');
@@ -338,21 +343,74 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleSavePhoneNumber = async () => {
-    if (!user || !phoneNumber.trim()) return;
+  const formatPhoneE164 = (phone: string): string => {
+    const digits = phone.replace(/\D/g, '');
+    if (digits.startsWith('1') && digits.length === 11) return `+${digits}`;
+    if (digits.length === 10) return `+1${digits}`;
+    return `+${digits}`;
+  };
 
-    setIsSavingPhone(true);
+  const getPhoneValidation = (phone: string): { valid: boolean; message: string | null } => {
+    if (!phone.trim()) return { valid: false, message: null };
+    const digits = phone.replace(/\D/g, '');
+    if (digits.startsWith('1') && digits.length === 11) return { valid: true, message: `Will send to +${digits}` };
+    if (digits.length === 10) return { valid: true, message: `Will send to +1${digits}` };
+    if (digits.length < 10) return { valid: false, message: 'Enter a full 10-digit phone number' };
+    return { valid: false, message: 'Invalid phone number format' };
+  };
+
+  const phoneValidation = getPhoneValidation(phoneNumber);
+
+  const handleSendOtp = async () => {
+    if (!phoneNumber.trim() || !phoneValidation.valid) return;
+
+    setIsSendingOtp(true);
     try {
-      const phone_hash = await hashPhoneNumber(phoneNumber);
-      await updateProfile(user.id, { phone_hash });
+      const e164 = formatPhoneE164(phoneNumber);
+      console.log('Sending OTP to:', e164);
+
+      const { data, error } = await supabase.functions.invoke('send-verification', {
+        body: { phone: e164 },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      setVerificationRequestId(data.request_id);
+      setOtpSent(true);
+    } catch (error: any) {
+      console.log('Send OTP error:', error.message);
+      Alert.alert('Error', error.message || 'Failed to send verification code');
+    } finally {
+      setIsSendingOtp(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!user || !otpCode.trim() || !phoneNumber.trim() || !verificationRequestId) return;
+
+    setIsVerifying(true);
+    try {
+      const e164 = formatPhoneE164(phoneNumber);
+      const { data, error } = await supabase.functions.invoke('check-verification', {
+        body: { request_id: verificationRequestId, code: otpCode, phone: e164 },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      // Refresh profile to pick up updated phone_hash
       const updatedProfile = await getProfile(user.id);
       setProfile(updatedProfile);
       setPhoneNumber('');
-      Alert.alert('Success', 'Phone number saved. Friends can now find you by your number.');
+      setOtpCode('');
+      setOtpSent(false);
+      setVerificationRequestId(null);
+      Alert.alert('Verified', 'Phone number verified. Friends can now find you by your number.');
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to save phone number');
+      Alert.alert('Error', error.message || 'Invalid verification code');
     } finally {
-      setIsSavingPhone(false);
+      setIsVerifying(false);
     }
   };
 
@@ -575,42 +633,105 @@ export default function SettingsScreen() {
             </Text>
             {profile?.phone_hash && (
               <Text style={[styles.phoneStatus, { color: COLORS.accent }]}>
-                Registered
+                Verified
               </Text>
             )}
           </View>
           <Text style={[styles.phoneDescription, { color: colors.textSecondary }]}>
-            Add your phone so friends can find you from their contacts
+            {otpSent
+              ? 'Enter the 6-digit code sent to your phone'
+              : 'Verify your phone so friends can find you from their contacts'}
           </Text>
-          <View style={styles.phoneInputRow}>
-            <TextInput
-              style={[
-                styles.phoneInput,
-                {
-                  backgroundColor: isDark ? '#1A1A1A' : '#E5E5E5',
-                  color: colors.text,
-                },
-              ]}
-              placeholder={profile?.phone_hash ? 'Update phone number' : 'Enter phone number'}
-              placeholderTextColor={colors.textSecondary}
-              value={phoneNumber}
-              onChangeText={setPhoneNumber}
-              keyboardType="phone-pad"
-              autoComplete="tel"
-            />
-            <TouchableOpacity
-              style={[
-                styles.phoneSaveButton,
-                { opacity: phoneNumber.trim() && !isSavingPhone ? 1 : 0.5 },
-              ]}
-              onPress={handleSavePhoneNumber}
-              disabled={!phoneNumber.trim() || isSavingPhone}
-            >
-              <Text style={styles.phoneSaveText}>
-                {isSavingPhone ? 'Saving...' : 'Save'}
-              </Text>
-            </TouchableOpacity>
-          </View>
+          {!otpSent ? (
+            <View>
+              <View style={styles.phoneInputRow}>
+                <TextInput
+                  style={[
+                    styles.phoneInput,
+                    {
+                      backgroundColor: isDark ? '#1A1A1A' : '#E5E5E5',
+                      color: colors.text,
+                    },
+                  ]}
+                  placeholder={profile?.phone_hash ? 'Update phone number' : '+1 (555) 123-4567'}
+                  placeholderTextColor={colors.textSecondary}
+                  value={phoneNumber}
+                  onChangeText={setPhoneNumber}
+                  keyboardType="phone-pad"
+                  autoComplete="tel"
+                />
+                <TouchableOpacity
+                  style={[
+                    styles.phoneSaveButton,
+                    { opacity: phoneValidation.valid && !isSendingOtp ? 1 : 0.5 },
+                  ]}
+                  onPress={handleSendOtp}
+                  disabled={!phoneValidation.valid || isSendingOtp}
+                >
+                  <Text style={styles.phoneSaveText}>
+                    {isSendingOtp ? 'Sending...' : 'Verify'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              {phoneValidation.message && (
+                <Text style={[
+                  styles.phoneHint,
+                  { color: phoneValidation.valid ? colors.textSecondary : '#FF6B6B' },
+                ]}>
+                  {phoneValidation.message}
+                </Text>
+              )}
+            </View>
+          ) : (
+            <View>
+              <View style={styles.phoneInputRow}>
+                <TextInput
+                  style={[
+                    styles.phoneInput,
+                    {
+                      backgroundColor: isDark ? '#1A1A1A' : '#E5E5E5',
+                      color: colors.text,
+                      letterSpacing: 8,
+                      textAlign: 'center',
+                      fontSize: 20,
+                      fontWeight: '600',
+                    },
+                  ]}
+                  placeholder="000000"
+                  placeholderTextColor={colors.textSecondary}
+                  value={otpCode}
+                  onChangeText={(text) => setOtpCode(text.replace(/\D/g, '').slice(0, 6))}
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  autoFocus
+                />
+                <TouchableOpacity
+                  style={[
+                    styles.phoneSaveButton,
+                    { opacity: otpCode.length === 6 && !isVerifying ? 1 : 0.5 },
+                  ]}
+                  onPress={handleVerifyOtp}
+                  disabled={otpCode.length !== 6 || isVerifying}
+                >
+                  <Text style={styles.phoneSaveText}>
+                    {isVerifying ? 'Checking...' : 'Confirm'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              <TouchableOpacity
+                style={styles.otpCancelRow}
+                onPress={() => {
+                  setOtpSent(false);
+                  setOtpCode('');
+                  setVerificationRequestId(null);
+                }}
+              >
+                <Text style={[styles.otpCancelText, { color: colors.textSecondary }]}>
+                  Wrong number? Go back
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         <View style={[styles.divider, { backgroundColor: colors.border }]} />
@@ -1052,5 +1173,16 @@ const styles = StyleSheet.create({
     color: '#000000',
     fontSize: 14,
     fontWeight: '600',
+  },
+  phoneHint: {
+    fontSize: 12,
+    marginTop: 6,
+  },
+  otpCancelRow: {
+    marginTop: 12,
+    alignItems: 'center',
+  },
+  otpCancelText: {
+    fontSize: 13,
   },
 });
