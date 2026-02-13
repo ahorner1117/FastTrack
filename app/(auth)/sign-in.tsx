@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { Alert } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/components/useColorScheme';
 import { AuthForm } from '@/src/components/Auth';
 import { signIn, signInWithGoogle } from '@/src/services/authService';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function SignInScreen() {
   const router = useRouter();
@@ -47,12 +50,10 @@ export default function SignInScreen() {
       await signInWithGoogle();
       // Auth state change will automatically redirect
     } catch (error: any) {
-      if (error.message !== 'Google sign-in was cancelled') {
-        Alert.alert(
-          'Google Sign-In Failed',
-          error.message || 'An error occurred during Google sign-in'
-        );
-      }
+      Alert.alert(
+        'Google Sign-In Failed',
+        error.message || 'An error occurred during Google sign-in'
+      );
     } finally {
       setIsGoogleLoading(false);
     }

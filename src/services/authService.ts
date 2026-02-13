@@ -213,7 +213,9 @@ export async function signInWithGoogle() {
   if (error) throw error;
   if (!data.url) throw new Error('No OAuth URL returned');
 
-  const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+  const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo, {
+    preferEphemeralSession: true,
+  });
 
   if (result.type !== 'success') {
     throw new Error('Google sign-in was cancelled');

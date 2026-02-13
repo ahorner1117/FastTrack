@@ -88,7 +88,7 @@ function useProtectedRoute() {
     if (!isAuthenticated && !inAuthGroup) {
       // Redirect to sign-in if not authenticated
       router.replace('/(auth)/sign-in' as any);
-    } else if (isAuthenticated && !inAuthGroup && profile && !profile.username) {
+    } else if (isAuthenticated && profile && !profile.username && !onSetUsername) {
       // Redirect to set-username if authenticated but no username set
       router.replace('/(auth)/set-username' as any);
     } else if (isAuthenticated && inAuthGroup && !onSetUsername && profile?.username) {
