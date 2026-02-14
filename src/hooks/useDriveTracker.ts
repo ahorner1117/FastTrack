@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
-import { Platform } from 'react-native';
+import { Platform, AppState } from 'react-native';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useDriveHistoryStore } from '../stores/driveHistoryStore';
 import { useLocation } from './useLocation';
@@ -39,6 +39,8 @@ export function useDriveTracker() {
   const lastPointRef = useRef<{ lat: number; lon: number } | null>(null);
   const distanceAccumulator = useRef(0);
   const speedSamples = useRef<number[]>([]);
+  const trackingStartedAt = useRef<number>(0);
+  const accumulatedTime = useRef<number>(0);
 
   // Start GPS tracking on mount
   useEffect(() => {
@@ -50,6 +52,16 @@ export function useDriveTracker() {
       }
     };
   }, [startTracking, stopTracking]);
+
+  // When app returns to foreground during tracking, force elapsed time to catch up
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active' && timerRef.current) {
+        setElapsedTime(accumulatedTime.current + (Date.now() - trackingStartedAt.current));
+      }
+    });
+    return () => subscription.remove();
+  }, []);
 
   // Transition to ready when GPS is good
   useEffect(() => {
@@ -126,20 +138,22 @@ export function useDriveTracker() {
       setGpsPoints([]);
       distanceAccumulator.current = 0;
       speedSamples.current = [];
+      accumulatedTime.current = 0;
       lastPointRef.current = currentLocation
         ? { lat: currentLocation.latitude, lon: currentLocation.longitude }
         : null;
     }
 
     setStatus('tracking');
+    trackingStartedAt.current = now;
 
     if (hapticFeedback && Haptics) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
 
-    // Start elapsed time timer
+    // Start elapsed time timer using wall-clock time
     timerRef.current = setInterval(() => {
-      setElapsedTime((prev) => prev + TIMER_UPDATE_INTERVAL_MS);
+      setElapsedTime(accumulatedTime.current + (Date.now() - trackingStartedAt.current));
     }, TIMER_UPDATE_INTERVAL_MS);
   }, [status, currentLocation, hapticFeedback]);
 
@@ -150,6 +164,10 @@ export function useDriveTracker() {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
+
+    // Bank elapsed time before pausing
+    accumulatedTime.current += Date.now() - trackingStartedAt.current;
+    setElapsedTime(accumulatedTime.current);
 
     setStatus('paused');
 
@@ -217,6 +235,8 @@ export function useDriveTracker() {
     distanceAccumulator.current = 0;
     speedSamples.current = [];
     lastPointRef.current = null;
+    trackingStartedAt.current = 0;
+    accumulatedTime.current = 0;
 
     if (isAccuracyOk) {
       setStatus('ready');

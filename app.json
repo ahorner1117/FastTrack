@@ -2,7 +2,7 @@
   "expo": {
     "name": "FastTrack",
     "slug": "FastTrack",
-    "version": "3.2.1",
+    "version": "3.2.2",
     "orientation": "portrait",
     "icon": "./assets/images/fasttrack-icon.png",
     "scheme": "fasttrack",
@@ -18,7 +18,8 @@
       "bundleIdentifier": "com.anthonyhorner.fasttrack",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "FastTrack uses your location to measure vehicle speed and distance for acceleration timing.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "FastTrack uses your location to measure vehicle speed and distance for acceleration timing.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "FastTrack needs continuous location access to track your speed and distance during active timing runs, even if you switch apps or lock your phone.",
+        "UIBackgroundModes": ["location"],
         "NSMotionUsageDescription": "FastTrack uses motion sensors to enhance speed measurement accuracy.",
         "NSContactsUsageDescription": "FastTrack uses your contacts to help you find and connect with friends who also use the app.",
         "ITSAppUsesNonExemptEncryption": false

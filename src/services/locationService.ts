@@ -26,8 +26,8 @@ export async function requestLocationPermissions(): Promise<boolean> {
     return false;
   }
 
-  // Request background permission for future use (optional)
-  // const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
+  // Request background permission so GPS continues when app is backgrounded
+  await Location.requestBackgroundPermissionsAsync();
 
   return true;
 }
