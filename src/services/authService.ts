@@ -18,6 +18,7 @@ import {
   fetchRunsFromCloud,
   fetchDrivesFromCloud,
 } from './syncService';
+import { registerAndSavePushToken, clearPushToken } from './notificationService';
 import { STORAGE_KEYS } from '../utils/constants';
 import type { Profile } from '../types';
 
@@ -123,6 +124,9 @@ export async function signIn({ email, password }: SignInParams) {
 }
 
 export async function signOut() {
+  // Clear push token before signing out (while we still have auth)
+  await clearPushToken().catch(console.error);
+
   const { error } = await supabase.auth.signOut();
 
   if (error) {
@@ -366,4 +370,7 @@ async function restoreAndSync() {
   await syncAllVehicles();
   await syncAllUnsyncedRuns();
   await syncAllUnsyncedDrives();
+
+  // 5. Register push notifications token
+  registerAndSavePushToken().catch(console.error);
 }

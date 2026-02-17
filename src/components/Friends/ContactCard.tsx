@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { UserPlus, Clock } from 'lucide-react-native';
 import { COLORS } from '@/src/utils/constants';
 import type { Profile } from '@/src/types';
@@ -9,6 +9,7 @@ interface ContactCardProps {
   contactName: string;
   onAddFriend: () => void;
   isPending: boolean;
+  isLoading?: boolean;
   isDark: boolean;
 }
 
@@ -17,6 +18,7 @@ export function ContactCard({
   contactName,
   onAddFriend,
   isPending,
+  isLoading = false,
   isDark,
 }: ContactCardProps) {
   const colors = isDark ? COLORS.dark : COLORS.light;
@@ -40,7 +42,11 @@ export function ContactCard({
         </Text>
       </View>
 
-      {isPending ? (
+      {isLoading ? (
+        <View style={[styles.addButton, { backgroundColor: COLORS.accent }]}>
+          <ActivityIndicator size="small" color="#000000" />
+        </View>
+      ) : isPending ? (
         <View style={[styles.pendingBadge, { backgroundColor: colors.surfaceElevated }]}>
           <Clock color={colors.textSecondary} size={16} />
           <Text style={[styles.pendingText, { color: colors.textSecondary }]}>

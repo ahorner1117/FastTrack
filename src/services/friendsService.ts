@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { sendPushNotification } from './notificationService';
 import type { Profile, Friendship, FriendshipStatus } from '../types';
 
 export interface MatchedContact {
@@ -35,7 +36,7 @@ export async function findUsersFromPhoneHashes(
   return results;
 }
 
-export async function sendFriendRequest(friendId: string): Promise<Friendship> {
+export async function sendFriendRequest(friendId: string): Promise<void> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -51,27 +52,44 @@ export async function sendFriendRequest(friendId: string): Promise<Friendship> {
     .or(
       `and(user_id.eq.${user.id},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${user.id})`
     )
-    .single();
+    .maybeSingle();
 
   if (existing) {
-    throw new Error('Friend request already exists');
+    if (existing.status === 'accepted') {
+      throw new Error('You are already friends');
+    }
+    if (existing.status === 'pending') {
+      throw new Error('Friend request already sent');
+    }
+    // If rejected, allow re-sending by updating status back to pending
+    if (existing.status === 'rejected') {
+      const { error } = await supabase
+        .from('friendships')
+        .update({ status: 'pending', user_id: user.id, friend_id: friendId })
+        .eq('id', existing.id);
+
+      if (error) {
+        throw error;
+      }
+
+      notifyFriendRequest(friendId, user.id);
+      return;
+    }
   }
 
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from('friendships')
     .insert({
       user_id: user.id,
       friend_id: friendId,
       status: 'pending',
-    })
-    .select()
-    .single();
+    });
 
   if (error) {
     throw error;
   }
 
-  return data;
+  notifyFriendRequest(friendId, user.id);
 }
 
 export async function respondToFriendRequest(
@@ -87,6 +105,11 @@ export async function respondToFriendRequest(
 
   if (error) {
     throw error;
+  }
+
+  // Notify the original requester when their request is accepted
+  if (status === 'accepted') {
+    notifyFriendAccepted(data.user_id, data.friend_id);
   }
 
   return data;
@@ -199,4 +222,36 @@ export async function getFriendIds(): Promise<string[]> {
   return friends.map((f) =>
     f.user_id === user.id ? f.friend_id : f.user_id
   );
+}
+
+// Fire-and-forget notification helpers
+
+function notifyFriendRequest(recipientId: string, senderId: string): void {
+  getDisplayName(senderId).then((name) => {
+    sendPushNotification(
+      recipientId,
+      'New Friend Request',
+      `${name} sent you a friend request`
+    );
+  }).catch(console.error);
+}
+
+function notifyFriendAccepted(originalRequesterId: string, accepterId: string): void {
+  getDisplayName(accepterId).then((name) => {
+    sendPushNotification(
+      originalRequesterId,
+      'Friend Request Accepted',
+      `${name} accepted your friend request`
+    );
+  }).catch(console.error);
+}
+
+async function getDisplayName(userId: string): Promise<string> {
+  const { data } = await supabase
+    .from('profiles')
+    .select('display_name, username')
+    .eq('id', userId)
+    .single();
+
+  return data?.display_name || data?.username || 'Someone';
 }

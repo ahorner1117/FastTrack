@@ -127,6 +127,7 @@ export interface Profile {
   phone_hash: string | null;
   avatar_url: string | null;
   bio: string | null;
+  push_token: string | null;
   created_at: string;
   is_admin: boolean;
   tos_accepted_at: string | null;

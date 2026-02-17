@@ -39,6 +39,7 @@ export default function AddFriendsScreen() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [matchedContacts, setMatchedContacts] = useState<MatchedContact[]>([]);
+  const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -106,11 +107,19 @@ export default function AddFriendsScreen() {
   };
 
   const handleAddFriend = async (profile: Profile) => {
+    if (loadingIds.has(profile.id)) return;
+    setLoadingIds((prev) => new Set(prev).add(profile.id));
     try {
       await sendRequest(profile.id);
-      Alert.alert('Friend Request Sent', `Request sent to ${profile.display_name || profile.email}`);
+      Alert.alert('Success', `Friend request sent to ${profile.display_name || profile.email}!`);
     } catch (err: any) {
       Alert.alert('Error', err.message || 'Failed to send friend request');
+    } finally {
+      setLoadingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(profile.id);
+        return next;
+      });
     }
   };
 
@@ -124,6 +133,7 @@ export default function AddFriendsScreen() {
       contactName={item.contactName}
       onAddFriend={() => handleAddFriend(item.profile)}
       isPending={isPending(item.profile.id)}
+      isLoading={loadingIds.has(item.profile.id)}
       isDark={isDark}
     />
   );

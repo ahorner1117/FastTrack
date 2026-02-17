@@ -32,6 +32,7 @@ export default function UserProfileScreen() {
 
   const [profileData, setProfileData] = useState<UserProfileData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isActionLoading, setIsActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadProfile = useCallback(async () => {
@@ -53,26 +54,34 @@ export default function UserProfileScreen() {
   }, [loadProfile]);
 
   const handleAddFriend = async () => {
-    if (!id) return;
+    if (!id || isActionLoading) return;
+    setIsActionLoading(true);
     try {
       await sendRequest(id);
       setProfileData((prev) =>
         prev ? { ...prev, friendshipStatus: 'pending_sent' } : prev
       );
+      Alert.alert('Success', 'Friend request sent!');
     } catch (err: any) {
       Alert.alert('Error', err.message || 'Failed to send friend request');
+    } finally {
+      setIsActionLoading(false);
     }
   };
 
   const handleAcceptFriend = async () => {
-    if (!profileData?.friendshipId) return;
+    if (!profileData?.friendshipId || isActionLoading) return;
+    setIsActionLoading(true);
     try {
       await acceptRequest(profileData.friendshipId);
       setProfileData((prev) =>
         prev ? { ...prev, friendshipStatus: 'accepted' } : prev
       );
+      Alert.alert('Success', 'Friend request accepted!');
     } catch (err: any) {
       Alert.alert('Error', err.message || 'Failed to accept friend request');
+    } finally {
+      setIsActionLoading(false);
     }
   };
 
@@ -162,6 +171,7 @@ export default function UserProfileScreen() {
         isDark={isDark}
         postsCount={profileData.postsCount}
         friendshipStatus={profileData.friendshipStatus}
+        isActionLoading={isActionLoading}
         onAddFriend={handleAddFriend}
         onAcceptFriend={handleAcceptFriend}
         onRemoveFriend={handleRemoveFriend}

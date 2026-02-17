@@ -2,7 +2,7 @@
   "expo": {
     "name": "FastTrack",
     "slug": "FastTrack",
-    "version": "3.2.2",
+    "version": "3.3.0",
     "orientation": "portrait",
     "icon": "./assets/images/fasttrack-icon.png",
     "scheme": "fasttrack",
@@ -57,6 +57,13 @@
         "expo-contacts",
         {
           "contactsPermission": "FastTrack uses your contacts to help you find and connect with friends who also use the app."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/fasttrack-icon.png",
+          "color": "#FF9500"
         }
       ]
     ],

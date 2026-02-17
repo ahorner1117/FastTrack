@@ -29,6 +29,7 @@ interface ProfileHeaderProps {
   friendsCount?: number;
   pendingRequestsCount?: number;
   friendshipStatus?: 'none' | 'pending_sent' | 'pending_received' | 'accepted';
+  isActionLoading?: boolean;
   isUploadingAvatar?: boolean;
   onEditAvatar?: () => void;
   onSettings?: () => void;
@@ -46,6 +47,7 @@ export function ProfileHeader({
   friendsCount = 0,
   pendingRequestsCount = 0,
   friendshipStatus = 'none',
+  isActionLoading = false,
   isUploadingAvatar = false,
   onEditAvatar,
   onSettings,
@@ -58,6 +60,16 @@ export function ProfileHeader({
 
   const renderFriendshipButton = () => {
     if (isOwnProfile) return null;
+
+    if (isActionLoading) {
+      return (
+        <View
+          style={[styles.friendButton, { backgroundColor: colors.surface }]}
+        >
+          <ActivityIndicator size="small" color={COLORS.accent} />
+        </View>
+      );
+    }
 
     switch (friendshipStatus) {
       case 'accepted':

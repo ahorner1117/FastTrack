@@ -10,6 +10,7 @@ import { useColorScheme } from '@/components/useColorScheme';
 import { useSettingsStore } from '@/src/stores/settingsStore';
 import { useAuthStore } from '@/src/stores/authStore';
 import { initializeAuth } from '@/src/services/authService';
+import { setupNotificationListeners } from '@/src/services/notificationService';
 import { supabase } from '@/src/lib/supabase';
 import { COLORS } from '@/src/utils/constants';
 import { RPMGauge } from '@/src/components/Loading';
@@ -129,6 +130,12 @@ function RootLayoutNav() {
   const router = useRouter();
 
   useProtectedRoute();
+
+  // Set up push notification listeners
+  useEffect(() => {
+    const cleanup = setupNotificationListeners();
+    return cleanup;
+  }, []);
 
   // Handle deep links for password reset
   useEffect(() => {
