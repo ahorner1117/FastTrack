@@ -5,6 +5,13 @@ import { useDriveHistoryStore } from '../stores/driveHistoryStore';
 import { useLocation } from './useLocation';
 import { calculateDistance } from '../services/locationService';
 import { syncDriveToCloud } from '../services/syncService';
+import {
+  startBackgroundLocationUpdates,
+  stopBackgroundLocationUpdates,
+  getAndClearBackgroundData,
+  setLastKnownPosition,
+  resetBackgroundState,
+} from '../services/backgroundLocationService';
 import { TIMER_UPDATE_INTERVAL_MS, GPS_ACCURACY_THRESHOLDS } from '../utils/constants';
 import type { GPSPoint, Drive } from '../types';
 
@@ -41,6 +48,12 @@ export function useDriveTracker() {
   const speedSamples = useRef<number[]>([]);
   const trackingStartedAt = useRef<number>(0);
   const accumulatedTime = useRef<number>(0);
+  const statusRef = useRef<DriveStatus>('idle');
+
+  // Keep statusRef in sync so the AppState callback can read it
+  useEffect(() => {
+    statusRef.current = status;
+  }, [status]);
 
   // Start GPS tracking on mount
   useEffect(() => {
@@ -53,11 +66,37 @@ export function useDriveTracker() {
     };
   }, [startTracking, stopTracking]);
 
-  // When app returns to foreground during tracking, force elapsed time to catch up
+  // When app returns to foreground during tracking, merge background data
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextAppState) => {
-      if (nextAppState === 'active' && timerRef.current) {
-        setElapsedTime(accumulatedTime.current + (Date.now() - trackingStartedAt.current));
+      if (nextAppState === 'active' && statusRef.current === 'tracking') {
+        // Catch up elapsed time
+        if (timerRef.current) {
+          setElapsedTime(accumulatedTime.current + (Date.now() - trackingStartedAt.current));
+        }
+
+        // Merge accumulated background GPS data
+        const bgData = getAndClearBackgroundData();
+
+        if (bgData.points.length > 0) {
+          // Merge GPS points
+          setGpsPoints((prev) => [...prev, ...bgData.points]);
+
+          // Merge distance
+          distanceAccumulator.current += bgData.distance;
+          setTotalDistance(distanceAccumulator.current);
+
+          // Merge max speed
+          setMaxSpeed((prev) => Math.max(prev, bgData.maxSpeed));
+
+          // Merge speed samples
+          speedSamples.current.push(...bgData.speedSamples);
+
+          // Update last known point for foreground distance tracking
+          if (bgData.lastPoint) {
+            lastPointRef.current = bgData.lastPoint;
+          }
+        }
       }
     });
     return () => subscription.remove();
@@ -72,7 +111,7 @@ export function useDriveTracker() {
     }
   }, [status, isTracking, isAccuracyOk]);
 
-  // Process GPS updates during tracking
+  // Process GPS updates during tracking (foreground)
   useEffect(() => {
     if (!currentLocation) return;
 
@@ -121,6 +160,13 @@ export function useDriveTracker() {
         lat: currentLocation.latitude,
         lon: currentLocation.longitude,
       };
+
+      // Keep the background service in sync with the latest foreground position
+      setLastKnownPosition(
+        currentLocation.latitude,
+        currentLocation.longitude,
+        currentLocation.timestamp
+      );
     }
   }, [currentLocation, status, maxSpeed, gpsAccuracy]);
 
@@ -142,6 +188,15 @@ export function useDriveTracker() {
       lastPointRef.current = currentLocation
         ? { lat: currentLocation.latitude, lon: currentLocation.longitude }
         : null;
+
+      // Sync initial position to background service
+      if (currentLocation) {
+        setLastKnownPosition(
+          currentLocation.latitude,
+          currentLocation.longitude,
+          currentLocation.timestamp
+        );
+      }
     }
 
     setStatus('tracking');
@@ -151,11 +206,17 @@ export function useDriveTracker() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
 
+    // Start background location tracking
+    const maxAcceptableAccuracy = GPS_ACCURACY_THRESHOLDS[gpsAccuracy] * 2;
+    startBackgroundLocationUpdates(maxAcceptableAccuracy).catch((err) => {
+      console.error('Failed to start background location:', err);
+    });
+
     // Start elapsed time timer using wall-clock time
     timerRef.current = setInterval(() => {
       setElapsedTime(accumulatedTime.current + (Date.now() - trackingStartedAt.current));
     }, TIMER_UPDATE_INTERVAL_MS);
-  }, [status, currentLocation, hapticFeedback]);
+  }, [status, currentLocation, hapticFeedback, gpsAccuracy]);
 
   const pauseDrive = useCallback(() => {
     if (status !== 'tracking') return;
@@ -171,6 +232,11 @@ export function useDriveTracker() {
 
     setStatus('paused');
 
+    // Stop background location tracking while paused
+    stopBackgroundLocationUpdates().catch((err) => {
+      console.error('Failed to stop background location:', err);
+    });
+
     if (hapticFeedback && Haptics) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
@@ -184,19 +250,37 @@ export function useDriveTracker() {
       timerRef.current = null;
     }
 
+    // Merge any remaining background data before saving
+    const bgData = getAndClearBackgroundData();
+    let finalGpsPoints = gpsPoints;
+    let finalMaxSpeed = maxSpeed;
+    let finalDistance = distanceAccumulator.current;
+
+    if (bgData.points.length > 0) {
+      finalGpsPoints = [...gpsPoints, ...bgData.points];
+      finalMaxSpeed = Math.max(maxSpeed, bgData.maxSpeed);
+      finalDistance += bgData.distance;
+      speedSamples.current.push(...bgData.speedSamples);
+    }
+
+    // Stop background location tracking
+    stopBackgroundLocationUpdates().catch((err) => {
+      console.error('Failed to stop background location:', err);
+    });
+
     // Save drive to history
-    if (startTime && gpsPoints.length > 0) {
+    if (startTime && finalGpsPoints.length > 0) {
       const completedDrive: Drive = {
         id: `drive_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
         vehicleId: defaultVehicleId,
         startTime,
         endTime: Date.now(),
-        distance: distanceAccumulator.current,
-        maxSpeed,
+        distance: finalDistance,
+        maxSpeed: finalMaxSpeed,
         avgSpeed: speedSamples.current.length > 0
           ? speedSamples.current.reduce((a, b) => a + b, 0) / speedSamples.current.length
           : 0,
-        gpsPoints,
+        gpsPoints: finalGpsPoints,
         createdAt: Date.now(),
       };
       addDrive(completedDrive);
@@ -237,6 +321,9 @@ export function useDriveTracker() {
     lastPointRef.current = null;
     trackingStartedAt.current = 0;
     accumulatedTime.current = 0;
+
+    // Reset background state
+    resetBackgroundState();
 
     if (isAccuracyOk) {
       setStatus('ready');

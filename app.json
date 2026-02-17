@@ -46,6 +46,14 @@
       "expo-router",
       "expo-secure-store",
       [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "FastTrack needs continuous location access to track your speed and distance during active timing runs, even if you switch apps or lock your phone.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true
+        }
+      ],
+      [
         "expo-contacts",
         {
           "contactsPermission": "FastTrack uses your contacts to help you find and connect with friends who also use the app."
