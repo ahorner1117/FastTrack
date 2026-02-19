@@ -109,8 +109,8 @@ export function setupNotificationListeners(): () => void {
     Notifications.addNotificationResponseReceivedListener((response) => {
       const data = response.notification.request.content.data;
 
-      if (data?.screen === 'friend-requests') {
-        router.push('/friends/requests' as any);
+      if (data?.screen === 'friend-requests' || data?.screen === 'notifications') {
+        router.push('/notifications' as any);
       }
     });
 

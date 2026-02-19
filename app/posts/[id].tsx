@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -11,10 +11,13 @@ import {
   Dimensions,
   KeyboardAvoidingView,
   Platform,
+  Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { Heart, Trash2 } from 'lucide-react-native';
+import { useNavigation } from '@react-navigation/native';
+import { useHeaderHeight } from '@react-navigation/elements';
+import { ChevronLeft, Heart, Trash2 } from 'lucide-react-native';
 
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
@@ -51,7 +54,21 @@ export default function PostDetailScreen() {
   const isDark = colorScheme === 'dark';
   const colors = Colors[isDark ? 'dark' : 'light'];
   const router = useRouter();
+  const navigation = useNavigation();
+  const headerHeight = useHeaderHeight();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const canGoBack = navigation.canGoBack();
+
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardWillShow', () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener('keyboardWillHide', () => setKeyboardVisible(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const { user } = useAuthStore();
   const {
@@ -296,6 +313,17 @@ export default function PostDetailScreen() {
             title: 'Post',
             headerStyle: { backgroundColor: colors.background },
             headerTintColor: colors.text,
+            headerLeft: canGoBack
+              ? () => (
+                  <Pressable
+                    onPress={() => router.back()}
+                    hitSlop={8}
+                    style={{ width: 32, height: 32, justifyContent: 'center', alignItems: 'center' }}
+                  >
+                    <ChevronLeft color={colors.text} size={28} />
+                  </Pressable>
+                )
+              : undefined,
           }}
         />
         <View
@@ -317,15 +345,27 @@ export default function PostDetailScreen() {
           title: 'Post',
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.text,
+          headerLeft: canGoBack
+            ? () => (
+                <Pressable
+                  onPress={() => router.back()}
+                  hitSlop={8}
+                  style={{ width: 32, height: 32, justifyContent: 'center', alignItems: 'center' }}
+                >
+                  <ChevronLeft color={colors.text} size={28} />
+                </Pressable>
+              )
+            : undefined,
         }}
       />
       <SafeAreaView
         style={[styles.container, { backgroundColor: colors.background }]}
-        edges={['bottom']}
+        edges={keyboardVisible ? [] : ['bottom']}
       >
         <KeyboardAvoidingView
           style={styles.flex}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={headerHeight}
         >
           <FlatList
             data={comments}

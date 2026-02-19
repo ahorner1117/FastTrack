@@ -4,6 +4,8 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Linking from 'expo-linking';
 import { useEffect, useState } from 'react';
+import { Pressable } from 'react-native';
+import { X } from 'lucide-react-native';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/components/useColorScheme';
@@ -194,19 +196,46 @@ function RootLayoutNav() {
         />
         <Stack.Screen
           name="friends/add"
-          options={{
+          options={({ navigation }) => ({
             headerShown: true,
             title: 'Add Friends',
             presentation: 'modal',
-          }}
+            headerLeft: () => (
+              <Pressable onPress={() => navigation.goBack()} hitSlop={8}>
+                <X color={COLORS.dark.text} size={22} />
+              </Pressable>
+            ),
+          })}
         />
         <Stack.Screen
           name="friends/requests"
-          options={{
+          options={({ navigation }) => ({
             headerShown: true,
             title: 'Friend Requests',
             presentation: 'modal',
-          }}
+            headerLeft: () => (
+              <Pressable onPress={() => navigation.goBack()} hitSlop={8}>
+                <X color={COLORS.dark.text} size={22} />
+              </Pressable>
+            ),
+          })}
+        />
+        <Stack.Screen
+          name="notifications"
+          options={({ navigation }) => ({
+            headerShown: true,
+            title: 'Notifications',
+            presentation: 'modal',
+            headerLeft: () => (
+              <Pressable
+                onPress={() => navigation.goBack()}
+                hitSlop={8}
+                style={{ width: 32, height: 32, justifyContent: 'center', alignItems: 'center' }}
+              >
+                <X color={COLORS.dark.text} size={22} />
+              </Pressable>
+            ),
+          })}
         />
         <Stack.Screen
           name="settings"
@@ -240,7 +269,7 @@ function RootLayoutNav() {
           name="posts/[id]"
           options={{
             headerShown: true,
-            headerBackTitle: 'Explore',
+            headerBackTitle: 'Back',
           }}
         />
       </Stack>

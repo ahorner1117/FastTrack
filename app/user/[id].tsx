@@ -5,9 +5,11 @@ import {
   Text,
   ActivityIndicator,
   Alert,
+  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
+import { ChevronLeft } from 'lucide-react-native';
 
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
@@ -130,6 +132,11 @@ export default function UserProfileScreen() {
             title: '',
             headerStyle: { backgroundColor: colors.background },
             headerTintColor: colors.text,
+            headerLeft: () => (
+              <Pressable onPress={() => router.back()} hitSlop={8}>
+                <ChevronLeft color={colors.text} size={28} />
+              </Pressable>
+            ),
           }}
         />
         <View
@@ -152,6 +159,11 @@ export default function UserProfileScreen() {
             title: 'Profile',
             headerStyle: { backgroundColor: colors.background },
             headerTintColor: colors.text,
+            headerLeft: () => (
+              <Pressable onPress={() => router.back()} hitSlop={8}>
+                <ChevronLeft color={colors.text} size={28} />
+              </Pressable>
+            ),
           }}
         />
         <View
@@ -205,6 +217,11 @@ export default function UserProfileScreen() {
           title: profileData.profile.display_name || 'Profile',
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.text,
+          headerLeft: () => (
+            <Pressable onPress={() => router.back()} hitSlop={8}>
+              <ChevronLeft color={colors.text} size={28} />
+            </Pressable>
+          ),
         }}
       />
       <SafeAreaView

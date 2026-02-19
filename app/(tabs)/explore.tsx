@@ -10,12 +10,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { Bell } from 'lucide-react-native';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
 import { COLORS } from '@/src/utils/constants';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useFeedStore } from '@/src/stores/feedStore';
 import { useSearchStore } from '@/src/stores/searchStore';
+import { useNotificationStore } from '@/src/stores/notificationStore';
 import {
   CreatePostButton,
   SearchBar,
@@ -43,6 +45,7 @@ function ExploreContent() {
   const router = useRouter();
 
   const { user } = useAuthStore();
+  const { unreadCount, fetchNotifications } = useNotificationStore();
   const {
     explorePosts,
     isLoadingExplore,
@@ -68,7 +71,8 @@ function ExploreContent() {
 
   useEffect(() => {
     fetchExplorePosts();
-  }, [fetchExplorePosts]);
+    fetchNotifications();
+  }, [fetchExplorePosts, fetchNotifications]);
 
   const handlePostPress = useCallback(
     (post: Post) => {
@@ -116,6 +120,27 @@ function ExploreContent() {
     >
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>Explore</Text>
+        <Pressable
+          style={[
+            styles.bellButton,
+            {
+              backgroundColor: unreadCount > 0
+                ? COLORS.accent
+                : isDark ? COLORS.dark.surface : COLORS.light.surface,
+            },
+          ]}
+          onPress={() => router.push('/notifications' as any)}
+        >
+          <Bell
+            color={unreadCount > 0 ? '#000000' : colors.text}
+            size={20}
+          />
+          {unreadCount > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{unreadCount}</Text>
+            </View>
+          )}
+        </Pressable>
       </View>
 
       <View style={styles.searchContainer}>
@@ -282,6 +307,30 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
+    fontWeight: '700',
+  },
+  bellButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  badge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: '#FF3B30',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 5,
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
     fontWeight: '700',
   },
   searchContainer: {

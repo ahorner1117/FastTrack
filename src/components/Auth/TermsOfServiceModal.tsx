@@ -5,6 +5,7 @@ import {
   Modal,
   ScrollView,
   TouchableOpacity,
+  Pressable,
   StyleSheet,
   Dimensions,
   NativeSyntheticEvent,
@@ -74,15 +75,13 @@ export const TermsOfServiceModal: React.FC<TermsOfServiceModalProps> = ({
       animationType="fade"
       onRequestClose={handleDecline}
     >
-      <TouchableOpacity
+      <Pressable
         style={styles.backdrop}
-        activeOpacity={1}
         onPress={handleDecline}
       >
-        <TouchableOpacity
+        <View
           style={styles.modalContent}
-          activeOpacity={1}
-          onPress={(e) => e.stopPropagation()}
+          onStartShouldSetResponder={() => true}
         >
           <View style={styles.header}>
             <Text style={styles.title}>Terms of Service</Text>
@@ -146,8 +145,8 @@ export const TermsOfServiceModal: React.FC<TermsOfServiceModalProps> = ({
               </Text>
             </TouchableOpacity>
           </View>
-        </TouchableOpacity>
-      </TouchableOpacity>
+        </View>
+      </Pressable>
     </Modal>
   );
 };

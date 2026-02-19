@@ -291,6 +291,23 @@ export interface UserProfileData {
   friendshipId?: string;
 }
 
+// Notification Types
+
+export type NotificationType = 'friend_request' | 'like' | 'comment';
+
+export interface NotificationItem {
+  id: string;
+  type: NotificationType;
+  created_at: string;
+  actor_id: string;
+  actor_display_name: string;
+  actor_avatar_url: string | null;
+  post_id?: string;
+  post_image_url?: string;
+  comment_content?: string;
+  friendship_id?: string;
+}
+
 // Admin & Moderation Types
 
 export interface AdminUserDetailFull {

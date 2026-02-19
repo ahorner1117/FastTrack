@@ -5,8 +5,10 @@ import {
   Text,
   ScrollView,
   ActivityIndicator,
+  Pressable,
 } from 'react-native';
-import { useLocalSearchParams, Stack } from 'expo-router';
+import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
+import { ChevronLeft } from 'lucide-react-native';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
 import { VehicleImage } from '@/src/components/Garage';
@@ -16,6 +18,7 @@ import type { CloudVehicle } from '@/src/types';
 
 export default function UserVehicleDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const colors = Colors[isDark ? 'dark' : 'light'];
@@ -51,6 +54,11 @@ export default function UserVehicleDetailScreen() {
             title: '',
             headerStyle: { backgroundColor: colors.background },
             headerTintColor: colors.text,
+            headerLeft: () => (
+              <Pressable onPress={() => router.back()} hitSlop={8}>
+                <ChevronLeft color={colors.text} size={28} />
+              </Pressable>
+            ),
           }}
         />
         <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
@@ -68,6 +76,11 @@ export default function UserVehicleDetailScreen() {
             title: 'Vehicle',
             headerStyle: { backgroundColor: colors.background },
             headerTintColor: colors.text,
+            headerLeft: () => (
+              <Pressable onPress={() => router.back()} hitSlop={8}>
+                <ChevronLeft color={colors.text} size={28} />
+              </Pressable>
+            ),
           }}
         />
         <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -93,6 +106,11 @@ export default function UserVehicleDetailScreen() {
           title: vehicle.name,
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.text,
+          headerLeft: () => (
+            <Pressable onPress={() => router.back()} hitSlop={8}>
+              <ChevronLeft color={colors.text} size={28} />
+            </Pressable>
+          ),
         }}
       />
       <ScrollView

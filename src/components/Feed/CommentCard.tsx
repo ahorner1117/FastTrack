@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, Image, StyleSheet, Pressable } from 'react-native';
 import { Trash2 } from 'lucide-react-native';
 import { COLORS } from '@/src/utils/constants';
 import { MentionText } from '@/src/utils/mentions';
@@ -39,13 +39,20 @@ export function CommentCard({
 
   return (
     <View style={styles.container}>
-      <View
-        style={[styles.avatar, { backgroundColor: colors.surfaceElevated }]}
-      >
-        <Text style={[styles.avatarText, { color: colors.text }]}>
-          {displayName.charAt(0).toUpperCase()}
-        </Text>
-      </View>
+      {comment.profile?.avatar_url ? (
+        <Image
+          source={{ uri: comment.profile.avatar_url }}
+          style={styles.avatar}
+        />
+      ) : (
+        <View
+          style={[styles.avatar, { backgroundColor: colors.surfaceElevated }]}
+        >
+          <Text style={[styles.avatarText, { color: colors.text }]}>
+            {displayName.charAt(0).toUpperCase()}
+          </Text>
+        </View>
+      )}
       <View style={styles.content}>
         <View style={styles.header}>
           <Text style={[styles.displayName, { color: colors.text }]}>

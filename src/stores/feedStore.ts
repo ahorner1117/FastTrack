@@ -13,6 +13,8 @@ import {
   type FeedScope,
 } from '../services/postsService';
 import { uploadPostImage, deletePostImage } from '../services/postImageService';
+import { sendPushNotification } from '../services/notificationService';
+import { supabase } from '../lib/supabase';
 
 interface FeedState {
   posts: Post[];
@@ -337,6 +339,44 @@ export const useFeedStore = create<FeedState>((set, get) => ({
               }
             : state.currentPost,
       }));
+
+      // Fire-and-forget: notify post owner and mentioned users
+      const { currentPost } = get();
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (!user) return;
+        const commenterName = comment.profile?.display_name || 'Someone';
+
+        // Notify post owner
+        if (currentPost?.user_id && user.id !== currentPost.user_id) {
+          sendPushNotification(
+            currentPost.user_id,
+            'New Comment',
+            `${commenterName} commented on your post`
+          ).catch(console.error);
+        }
+
+        // Notify mentioned users
+        const mentionedUsernames = extractMentions(content);
+        if (mentionedUsernames.length > 0) {
+          supabase
+            .from('profiles')
+            .select('id, username')
+            .in('username', mentionedUsernames)
+            .then(({ data: mentionedUsers }) => {
+              if (!mentionedUsers) return;
+              for (const mentioned of mentionedUsers) {
+                // Skip self and post owner (already notified)
+                if (mentioned.id === user.id) continue;
+                if (mentioned.id === currentPost?.user_id) continue;
+                sendPushNotification(
+                  mentioned.id,
+                  'You were mentioned',
+                  `${commenterName} mentioned you in a comment`
+                ).catch(console.error);
+              }
+            });
+        }
+      }).catch(console.error);
     } catch (error: any) {
       set({ error: error.message });
       throw error;
@@ -392,3 +432,9 @@ export const useFeedStore = create<FeedState>((set, get) => ({
       isLoadingComments: false,
     }),
 }));
+
+function extractMentions(text: string): string[] {
+  const matches = text.match(/(?:^|\s)@(\w+)/g);
+  if (!matches) return [];
+  return [...new Set(matches.map((m) => m.trim().slice(1)))];
+}

@@ -10,12 +10,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { UserPlus, Bell, Users } from 'lucide-react-native';
+import { ChevronLeft, UserPlus, Bell, Users } from 'lucide-react-native';
 
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
 import { COLORS } from '@/src/utils/constants';
 import { useFriendsStore } from '@/src/stores/friendsStore';
+import { useNotificationStore } from '@/src/stores/notificationStore';
 import { useAuthStore } from '@/src/stores/authStore';
 import { FriendCard } from '@/src/components/Friends';
 import type { Friendship } from '@/src/types';
@@ -29,14 +30,15 @@ export default function FriendsScreen() {
   const { user } = useAuthStore();
   const {
     friends,
-    pendingRequests,
     isLoading,
     fetchAll,
     removeFriend,
   } = useFriendsStore();
+  const { unreadCount, fetchNotifications } = useNotificationStore();
 
   useEffect(() => {
     fetchAll();
+    fetchNotifications();
   }, []);
 
   const handleRefresh = useCallback(() => {
@@ -104,16 +106,25 @@ export default function FriendsScreen() {
       edges={['top']}
     >
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>Friends</Text>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            hitSlop={8}
+          >
+            <ChevronLeft color={colors.text} size={28} />
+          </TouchableOpacity>
+          <Text style={[styles.title, { color: colors.text }]}>Friends</Text>
+        </View>
         <View style={styles.headerActions}>
-          {pendingRequests.length > 0 && (
+          {unreadCount > 0 && (
             <TouchableOpacity
               style={[styles.headerButton, { backgroundColor: COLORS.accent }]}
-              onPress={() => router.push('/friends/requests' as any)}
+              onPress={() => router.push('/notifications' as any)}
             >
               <Bell color="#000000" size={20} />
               <View style={styles.badge}>
-                <Text style={styles.badgeText}>{pendingRequests.length}</Text>
+                <Text style={styles.badgeText}>{unreadCount}</Text>
               </View>
             </TouchableOpacity>
           )}
@@ -160,6 +171,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  backButton: {
+    marginLeft: -8,
   },
   title: {
     fontSize: 28,

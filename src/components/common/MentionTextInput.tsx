@@ -114,7 +114,7 @@ export function MentionTextInput({
   );
 
   return (
-    <View>
+    <View style={styles.wrapper}>
       {showSuggestions && suggestions.length > 0 && (
         <View style={[styles.suggestionsContainer, { backgroundColor: colors.surfaceElevated }]}>
           <FlatList
@@ -160,6 +160,9 @@ export function MentionTextInput({
 }
 
 const styles = StyleSheet.create({
+  wrapper: {
+    flex: 1,
+  },
   suggestionsContainer: {
     borderRadius: 12,
     marginBottom: 6,
