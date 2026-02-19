@@ -7,8 +7,8 @@ import {
   Pressable,
   Dimensions,
   ActivityIndicator,
+  Image,
 } from 'react-native';
-import { Image } from 'expo-image';
 import { Grid3x3 } from 'lucide-react-native';
 import Colors from '@/constants/Colors';
 import { COLORS } from '@/src/utils/constants';
@@ -61,10 +61,7 @@ export function PostGrid({
           <Image
             source={{ uri: item.image_url }}
             style={styles.gridImage}
-            contentFit="cover"
-            cachePolicy="memory-disk"
-            recyclingKey={item.id}
-            transition={200}
+            resizeMode="cover"
           />
         </Pressable>
       );

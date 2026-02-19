@@ -28,7 +28,7 @@ export async function searchVehicles(
     .select(
       `
       id, user_id, name, year, make, model, trim, photo_uri,
-      profile:profiles!vehicles_user_id_fkey(display_name, username)
+      profile:profiles(display_name, username)
     `
     )
     .or(`make.ilike.%${query}%,model.ilike.%${query}%,trim.ilike.%${query}%,name.ilike.%${query}%`)

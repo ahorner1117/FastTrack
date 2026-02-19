@@ -23,6 +23,7 @@ import {
   type PersonalBests as PersonalBestsType,
 } from '@/src/services/leaderboardService';
 import { LeaderboardCard, LeaderboardHeader, PersonalBests } from '@/src/components/Leaderboard';
+import { SignInPrompt } from '@/src/components/common/SignInPrompt';
 import type { LeaderboardCategory, LeaderboardEntry } from '@/src/types';
 
 type LeaderboardScope = 'global' | 'friends';
@@ -79,6 +80,16 @@ function mergeBests(cloud: PersonalBestsType, local: PersonalBestsType): Persona
 }
 
 export default function LeaderboardScreen() {
+  const { isAuthenticated } = useAuthStore();
+
+  if (!isAuthenticated) {
+    return <SignInPrompt message="Sign in to see leaderboards and compete with friends" />;
+  }
+
+  return <LeaderboardContent />;
+}
+
+function LeaderboardContent() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const colors = Colors[isDark ? 'dark' : 'light'];

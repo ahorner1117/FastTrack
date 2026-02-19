@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { SafeAreaView, ScrollView, StatusBar, StyleSheet, View, Text } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { SafeAreaView, ScrollView, StatusBar, StyleSheet, View, Text, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
 import {
   GPSStatus,
   LaunchStatus,
@@ -16,16 +17,21 @@ import {
   SecondaryTimerDisplay,
 } from '../../src/components/Timer';
 import { useVehicleStore } from '../../src/stores/vehicleStore';
+import { useAuthStore } from '../../src/stores/authStore';
 import { useRunTracker } from '../../src/hooks/useRunTracker';
 import { useDriveTracker } from '../../src/hooks/useDriveTracker';
 import { useSecondaryTimer } from '../../src/hooks/useSecondaryTimer';
 import { useRunStore } from '../../src/stores/runStore';
 import { useSettingsStore } from '../../src/stores/settingsStore';
+import { GuestBanner } from '../../src/components/common/GuestBanner';
 import { COLORS } from '../../src/utils/constants';
 import type { TimerMode } from '../../src/types';
 
 export default function TimerScreen() {
   const [mode, setMode] = useState<TimerMode>('acceleration');
+  const router = useRouter();
+  const { isAuthenticated } = useAuthStore();
+  const prevStatusRef = useRef<string>('idle');
 
   // Settings
   const { unitSystem, gpsAccuracy, hapticFeedback, launchDetectionThresholdG, launchDetectionSampleCount } = useSettingsStore();
@@ -44,6 +50,29 @@ export default function TimerScreen() {
   });
   const gpsPoints = useRunStore((state) => state.gpsPoints);
   const vehicles = useVehicleStore((state) => state.vehicles);
+
+  // Post-run sign-up prompt for guests
+  useEffect(() => {
+    const wasRunning = prevStatusRef.current === 'running';
+    prevStatusRef.current = runTracker.status;
+
+    if (!isAuthenticated && wasRunning && runTracker.status === 'completed') {
+      // Slight delay so the user sees their results first
+      setTimeout(() => {
+        Alert.alert(
+          'Save Your Runs',
+          'Create an account to save and sync your runs across devices.',
+          [
+            {
+              text: 'Sign Up',
+              onPress: () => router.push('/(auth)/sign-up' as any),
+            },
+            { text: 'Maybe Later', style: 'cancel' },
+          ]
+        );
+      }, 1500);
+    }
+  }, [runTracker.status, isAuthenticated]);
 
   // Determine if we can switch modes (only when idle/ready)
   const canSwitchMode =
@@ -68,6 +97,9 @@ export default function TimerScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
+
+      {/* Guest sign-up banner */}
+      {!isAuthenticated && <GuestBanner />}
 
       {/* GPS Status Header */}
       <GPSStatus

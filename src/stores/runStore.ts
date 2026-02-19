@@ -42,7 +42,9 @@ const initialState: TimerState & { accelMilestones: AccelMilestones } = {
 export const useRunStore = create<RunStoreState>()((set, get) => ({
   ...initialState,
 
-  setStatus: (status) => set({ status }),
+  setStatus: (status) => {
+    if (get().status !== status) set({ status });
+  },
 
   setSpeed: (currentSpeed) => {
     const { maxSpeed } = get();

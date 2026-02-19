@@ -203,6 +203,30 @@ export async function updatePassword(newPassword: string) {
   }
 }
 
+export async function deleteAccount() {
+  const { data, error } = await supabase.functions.invoke('delete-account');
+
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+
+  // Clear all local stores and persisted data
+  useAuthStore.getState().reset();
+  useVehicleStore.getState().reset();
+  useHistoryStore.getState().clearHistory();
+  useDriveHistoryStore.getState().clearHistory();
+  useSettingsStore.getState().resetToDefaults();
+  useRunStore.getState().reset();
+  useFriendsStore.getState().reset();
+  useFeedStore.getState().reset();
+
+  await AsyncStorage.multiRemove([
+    STORAGE_KEYS.VEHICLES,
+    STORAGE_KEYS.RUNS,
+    STORAGE_KEYS.DRIVES,
+    STORAGE_KEYS.SETTINGS,
+  ]);
+}
+
 export async function signInWithGoogle() {
   const redirectTo = Linking.createURL('google-auth');
 

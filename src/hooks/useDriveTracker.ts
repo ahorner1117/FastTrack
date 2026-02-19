@@ -103,13 +103,15 @@ export function useDriveTracker() {
   }, []);
 
   // Transition to ready when GPS is good
+  // Use statusRef to avoid a dependency cycle where setStatus changes `status`,
+  // re-triggering the effect, causing infinite loops.
   useEffect(() => {
-    if (status === 'idle' && isTracking && isAccuracyOk) {
+    if (statusRef.current === 'idle' && isTracking && isAccuracyOk) {
       setStatus('ready');
-    } else if (status === 'ready' && (!isTracking || !isAccuracyOk)) {
+    } else if (statusRef.current === 'ready' && (!isTracking || !isAccuracyOk)) {
       setStatus('idle');
     }
-  }, [status, isTracking, isAccuracyOk]);
+  }, [isTracking, isAccuracyOk]);
 
   // Process GPS updates during tracking (foreground)
   useEffect(() => {

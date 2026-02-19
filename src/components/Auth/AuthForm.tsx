@@ -30,9 +30,7 @@ interface AuthFormProps {
   onSubmit: () => void;
   onSwitchMode: () => void;
   onForgotPassword?: () => void;
-  onGoogleSignIn?: () => void;
   isLoading: boolean;
-  isGoogleLoading?: boolean;
   isDark: boolean;
 }
 
@@ -52,9 +50,7 @@ export function AuthForm({
   onSubmit,
   onSwitchMode,
   onForgotPassword,
-  onGoogleSignIn,
   isLoading,
-  isGoogleLoading,
   isDark,
 }: AuthFormProps) {
   const colors = isDark ? COLORS.dark : COLORS.light;
@@ -227,33 +223,6 @@ export function AuthForm({
               )}
             </TouchableOpacity>
 
-            {!isSignUp && onGoogleSignIn && (
-              <>
-                <View style={styles.divider}>
-                  <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-                  <Text style={[styles.dividerText, { color: colors.textSecondary }]}>or</Text>
-                  <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-                </View>
-
-                <TouchableOpacity
-                  style={[
-                    styles.googleButton,
-                    { borderColor: colors.border },
-                    isGoogleLoading && styles.submitButtonDisabled,
-                  ]}
-                  onPress={onGoogleSignIn}
-                  disabled={isGoogleLoading || isLoading}
-                >
-                  {isGoogleLoading ? (
-                    <ActivityIndicator color={colors.text} />
-                  ) : (
-                    <Text style={[styles.googleButtonText, { color: colors.text }]}>
-                      Continue with Google
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              </>
-            )}
           </View>
 
           <View style={styles.footer}>
@@ -358,30 +327,6 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     color: '#000000',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 4,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-  },
-  dividerText: {
-    marginHorizontal: 16,
-    fontSize: 14,
-  },
-  googleButton: {
-    height: 52,
-    borderRadius: 12,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  googleButtonText: {
     fontSize: 16,
     fontWeight: '600',
   },

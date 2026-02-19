@@ -86,10 +86,7 @@ function useProtectedRoute() {
     const inAuthGroup = (segments[0] as string) === '(auth)';
     const onSetUsername = segments[1] === 'set-username';
 
-    if (!isAuthenticated && !inAuthGroup) {
-      // Redirect to sign-in if not authenticated
-      router.replace('/(auth)/sign-in' as any);
-    } else if (isAuthenticated && profile && !profile.username && !onSetUsername) {
+    if (isAuthenticated && profile && !profile.username && !onSetUsername) {
       // Redirect to set-username if authenticated but no username set
       router.replace('/(auth)/set-username' as any);
     } else if (isAuthenticated && inAuthGroup && !onSetUsername && profile?.username) {
@@ -99,6 +96,7 @@ function useProtectedRoute() {
       // Username now set, redirect to tabs
       router.replace('/(tabs)');
     }
+    // Guests (unauthenticated) are allowed to stay on (tabs) — no redirect to sign-in
   }, [isAuthenticated, isLoading, segments, profile?.username]);
 }
 

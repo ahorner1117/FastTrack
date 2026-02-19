@@ -1,12 +1,9 @@
 import React, { useState } from 'react';
 import { Alert } from 'react-native';
-import * as WebBrowser from 'expo-web-browser';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/components/useColorScheme';
 import { AuthForm } from '@/src/components/Auth';
-import { signIn, signInWithGoogle } from '@/src/services/authService';
-
-WebBrowser.maybeCompleteAuthSession();
+import { signIn } from '@/src/services/authService';
 
 export default function SignInScreen() {
   const router = useRouter();
@@ -16,7 +13,6 @@ export default function SignInScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const handleSignIn = async () => {
     if (!email.trim()) {
@@ -44,21 +40,6 @@ export default function SignInScreen() {
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    setIsGoogleLoading(true);
-    try {
-      await signInWithGoogle();
-      // Auth state change will automatically redirect
-    } catch (error: any) {
-      Alert.alert(
-        'Google Sign-In Failed',
-        error.message || 'An error occurred during Google sign-in'
-      );
-    } finally {
-      setIsGoogleLoading(false);
-    }
-  };
-
   const handleForgotPassword = () => {
     router.push('/(auth)/forgot-password' as any);
   };
@@ -77,9 +58,7 @@ export default function SignInScreen() {
       onSubmit={handleSignIn}
       onSwitchMode={handleSwitchMode}
       onForgotPassword={handleForgotPassword}
-      onGoogleSignIn={handleGoogleSignIn}
       isLoading={isLoading}
-      isGoogleLoading={isGoogleLoading}
       isDark={isDark}
     />
   );

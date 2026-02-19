@@ -23,9 +23,20 @@ import {
   VehicleSearchCard,
 } from '@/src/components/Feed';
 import { PostGrid } from '@/src/components/Profile/PostGrid';
+import { SignInPrompt } from '@/src/components/common/SignInPrompt';
 import type { Post, UserSearchResult, VehicleSearchResult } from '@/src/types';
 
 export default function ExploreScreen() {
+  const { isAuthenticated } = useAuthStore();
+
+  if (!isAuthenticated) {
+    return <SignInPrompt message="Sign in to explore posts and find other users" />;
+  }
+
+  return <ExploreContent />;
+}
+
+function ExploreContent() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const colors = Colors[isDark ? 'dark' : 'light'];

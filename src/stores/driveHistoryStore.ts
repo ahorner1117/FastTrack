@@ -3,7 +3,6 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Drive } from '../types';
 import { STORAGE_KEYS } from '../utils/constants';
-import { deleteDrivesFromCloud } from '../services/syncService';
 
 // Extend Drive type with sync tracking
 export interface StoredDrive extends Drive {
@@ -35,8 +34,10 @@ export const useDriveHistoryStore = create<DriveHistoryState>()(
         set((state) => ({
           drives: state.drives.filter((drive) => drive.id !== id),
         }));
-        // Delete from cloud (fire-and-forget)
-        deleteDrivesFromCloud([id]).catch((error) => {
+        // Delete from cloud (fire-and-forget) — lazy require to break cycle
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { deleteDrivesFromCloud } = require('../services/syncService');
+        deleteDrivesFromCloud([id]).catch((error: any) => {
           console.error('Failed to delete drive from cloud:', error);
         });
       },
@@ -45,8 +46,10 @@ export const useDriveHistoryStore = create<DriveHistoryState>()(
         set((state) => ({
           drives: state.drives.filter((drive) => !ids.includes(drive.id)),
         }));
-        // Delete from cloud (fire-and-forget)
-        deleteDrivesFromCloud(ids).catch((error) => {
+        // Delete from cloud (fire-and-forget) — lazy require to break cycle
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { deleteDrivesFromCloud } = require('../services/syncService');
+        deleteDrivesFromCloud(ids).catch((error: any) => {
           console.error('Failed to delete drives from cloud:', error);
         });
       },

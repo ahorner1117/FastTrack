@@ -17,6 +17,7 @@ import Colors from '@/constants/Colors';
 import { COLORS } from '@/src/utils/constants';
 import { MentionTextInput } from '@/src/components/common/MentionTextInput';
 import { useAuthStore } from '@/src/stores/authStore';
+import { SignInPrompt } from '@/src/components/common/SignInPrompt';
 import { useVehicleStore } from '@/src/stores/vehicleStore';
 import { useFriendsStore } from '@/src/stores/friendsStore';
 import { getProfile, updateProfile } from '@/src/services/authService';
@@ -28,6 +29,16 @@ import { VehicleShowcase } from '@/src/components/Profile/VehicleShowcase';
 import type { Post } from '@/src/types';
 
 export default function ProfileScreen() {
+  const { isAuthenticated } = useAuthStore();
+
+  if (!isAuthenticated) {
+    return <SignInPrompt message="Sign in to view your profile" />;
+  }
+
+  return <ProfileContent />;
+}
+
+function ProfileContent() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const colors = Colors[isDark ? 'dark' : 'light'];

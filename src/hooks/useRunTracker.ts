@@ -166,17 +166,28 @@ export function useRunTracker() {
   }, [startTracking, stopTracking]);
 
   // Transition to ready when GPS is good (user must manually arm)
+  // Read status from the store directly to avoid a dependency cycle where
+  // setStatus changes `status`, re-triggering the effect, causing infinite loops.
   useEffect(() => {
-    if (status === 'idle' && isTracking && isAccuracyOk) {
+    const current = useRunStore.getState().status;
+    if (current === 'idle' && isTracking && isAccuracyOk) {
       setStatus('ready');
-    } else if (status === 'ready' && (!isTracking || !isAccuracyOk)) {
+    } else if (current === 'ready' && (!isTracking || !isAccuracyOk)) {
+      setStatus('idle');
+    } else if (current === 'armed' && (!isTracking || !isAccuracyOk)) {
       setStatus('idle');
     }
-    // If armed but GPS becomes bad, go back to idle
-    if (status === 'armed' && (!isTracking || !isAccuracyOk)) {
-      setStatus('idle');
-    }
-  }, [status, isTracking, isAccuracyOk, setStatus]);
+  }, [isTracking, isAccuracyOk, setStatus]);
+
+  // Handle external status resets (e.g. auth sign-in resets store to idle)
+  useEffect(() => {
+    const unsub = useRunStore.subscribe((state) => {
+      if (state.status === 'idle' && isTracking && isAccuracyOk) {
+        setStatus('ready');
+      }
+    });
+    return unsub;
+  }, [isTracking, isAccuracyOk, setStatus]);
 
   // Process GPS updates during running state (launch detection handled by accelerometer)
   useEffect(() => {

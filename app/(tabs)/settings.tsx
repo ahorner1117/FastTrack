@@ -1,7 +1,7 @@
 import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import { AtSign, Camera, Check, ChevronDown, ChevronRight, LogOut, Pencil, Phone, Shield, User } from 'lucide-react-native';
+import { AtSign, Camera, Check, ChevronDown, ChevronRight, LogOut, Pencil, Phone, Shield, Trash2, User } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -20,7 +20,7 @@ import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
 import { Card } from '@/src/components/common/Card';
 import { Toggle } from '@/src/components/common/Toggle';
-import { checkUsernameAvailable, getProfile, signOut, updateProfile } from '@/src/services/authService';
+import { checkUsernameAvailable, deleteAccount, getProfile, signOut, updateProfile } from '@/src/services/authService';
 import { deleteAvatar, uploadAvatar } from '@/src/services/avatarService';
 import { supabase } from '@/src/lib/supabase';
 import { useAuthStore } from '@/src/stores/authStore';
@@ -250,6 +250,7 @@ export default function SettingsScreen() {
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [isEditingUsername, setIsEditingUsername] = useState(false);
   const [newUsername, setNewUsername] = useState(profile?.username || '');
   const [usernameError, setUsernameError] = useState('');
@@ -501,6 +502,47 @@ export default function SettingsScreen() {
     );
   };
 
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'This will permanently delete your account and all associated data. This action cannot be undone.\n\nAre you sure you want to continue?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Account',
+          style: 'destructive',
+          onPress: () => {
+            Alert.prompt(
+              'Confirm Deletion',
+              'Type DELETE to confirm account deletion.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Delete',
+                  style: 'destructive',
+                  onPress: async (value?: string) => {
+                    if (value !== 'DELETE') {
+                      Alert.alert('Error', 'Please type DELETE to confirm.');
+                      return;
+                    }
+                    setIsDeletingAccount(true);
+                    try {
+                      await deleteAccount();
+                    } catch (error: any) {
+                      Alert.alert('Error', error.message || 'Failed to delete account');
+                      setIsDeletingAccount(false);
+                    }
+                  },
+                },
+              ],
+              'plain-text'
+            );
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
@@ -741,6 +783,20 @@ export default function SettingsScreen() {
           <Text style={[styles.signOutText, { color: colors.error }]}>
             Sign Out
           </Text>
+        </TouchableOpacity>
+
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+        <TouchableOpacity
+          style={styles.signOutRow}
+          onPress={handleDeleteAccount}
+          disabled={isDeletingAccount}
+        >
+          <Trash2 color={colors.error} size={20} />
+          <Text style={[styles.signOutText, { color: colors.error }]}>
+            {isDeletingAccount ? 'Deleting...' : 'Delete Account'}
+          </Text>
+          {isDeletingAccount && <ActivityIndicator size="small" color={colors.error} style={{ marginLeft: 'auto' }} />}
         </TouchableOpacity>
       </Card>
 
