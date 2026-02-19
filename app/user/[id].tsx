@@ -18,7 +18,7 @@ import { getUserProfile } from '@/src/services/userProfileService';
 import { ProfileHeader } from '@/src/components/Profile/ProfileHeader';
 import { PostGrid } from '@/src/components/Profile/PostGrid';
 import { VehicleShowcase } from '@/src/components/Profile/VehicleShowcase';
-import type { Post, UserProfileData } from '@/src/types';
+import type { Post, UserProfileData, CloudVehicle, Vehicle } from '@/src/types';
 
 export default function UserProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -115,6 +115,13 @@ export default function UserProfileScreen() {
     [router]
   );
 
+  const handleVehiclePress = useCallback(
+    (vehicle: Vehicle | CloudVehicle) => {
+      router.push(`/user/vehicle/${vehicle.id}`);
+    },
+    [router]
+  );
+
   if (isLoading) {
     return (
       <>
@@ -181,6 +188,7 @@ export default function UserProfileScreen() {
         <VehicleShowcase
           vehicles={profileData.vehicles}
           isDark={isDark}
+          onVehiclePress={handleVehiclePress}
         />
       )}
 

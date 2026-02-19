@@ -219,10 +219,9 @@ function RootLayoutNav() {
           }}
         />
         <Stack.Screen
-          name="user/[id]"
+          name="user"
           options={{
-            headerShown: true,
-            headerBackTitle: 'Back',
+            headerShown: false,
           }}
         />
         <Stack.Screen

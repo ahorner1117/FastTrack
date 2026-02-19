@@ -97,132 +97,15 @@ export default function ExploreScreen() {
     clear();
   }, [clear]);
 
-  // Search results view
-  if (isSearchActive) {
-    return (
-      <SafeAreaView
-        style={[styles.container, { backgroundColor: colors.background }]}
-        edges={['top']}
-      >
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.text }]}>Explore</Text>
-        </View>
-
-        <View style={styles.searchContainer}>
-          <SearchBar
-            value={query}
-            onChangeText={setQuery}
-            onSubmit={handleSearch}
-            onClear={handleClearSearch}
-            isDark={isDark}
-          />
-        </View>
-
-        {/* Search tab toggle */}
-        <View style={styles.searchTabsContainer}>
-          <Pressable
-            style={[
-              styles.searchTab,
-              activeTab === 'users' && {
-                borderBottomColor: COLORS.accent,
-                borderBottomWidth: 2,
-              },
-            ]}
-            onPress={() => setActiveTab('users')}
-          >
-            <Text
-              style={[
-                styles.searchTabText,
-                {
-                  color:
-                    activeTab === 'users'
-                      ? colors.text
-                      : colors.textSecondary,
-                },
-                activeTab === 'users' && styles.searchTabTextActive,
-              ]}
-            >
-              Users
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[
-              styles.searchTab,
-              activeTab === 'posts' && {
-                borderBottomColor: COLORS.accent,
-                borderBottomWidth: 2,
-              },
-            ]}
-            onPress={() => setActiveTab('posts')}
-          >
-            <Text
-              style={[
-                styles.searchTabText,
-                {
-                  color:
-                    activeTab === 'posts'
-                      ? colors.text
-                      : colors.textSecondary,
-                },
-                activeTab === 'posts' && styles.searchTabTextActive,
-              ]}
-            >
-              Vehicles
-            </Text>
-          </Pressable>
-        </View>
-
-        {isSearching ? (
-          <View style={styles.searchLoadingContainer}>
-            <ActivityIndicator size="large" color={COLORS.accent} />
-          </View>
-        ) : activeTab === 'users' ? (
-          <FlatList
-            data={userResults}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }: { item: UserSearchResult }) => (
-              <UserSearchCard
-                user={item}
-                isDark={isDark}
-                onPress={() => handleUserPress(item.id)}
-              />
-            )}
-            contentContainerStyle={[
-              styles.searchListContent,
-              userResults.length === 0 && styles.emptyListContent,
-            ]}
-            ListEmptyComponent={
-              hasSearched ? (
-                <View style={styles.emptyContainer}>
-                  <Text
-                    style={[
-                      styles.emptySubtitle,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    No users found
-                  </Text>
-                </View>
-              ) : null
-            }
-          />
-        ) : (
-          <PostGrid
-            posts={postResults}
-            isDark={isDark}
-            onPostPress={handlePostPress}
-          />
-        )}
-      </SafeAreaView>
-    );
-  }
-
-  // Default explore grid view
-  const gridHeader = (
-    <>
+  return (
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      edges={['top']}
+    >
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>Explore</Text>
       </View>
+
       <View style={styles.searchContainer}>
         <SearchBar
           value={query}
@@ -232,24 +115,116 @@ export default function ExploreScreen() {
           isDark={isDark}
         />
       </View>
-    </>
-  );
 
-  return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      edges={['top']}
-    >
-      <PostGrid
-        posts={explorePosts}
-        isDark={isDark}
-        onPostPress={handlePostPress}
-        isLoading={isLoadingExplore}
-        onEndReached={hasMoreExplore ? loadMoreExplore : undefined}
-        ListHeaderComponent={gridHeader}
-      />
+      {isSearchActive ? (
+        <>
+          {/* Search tab toggle */}
+          <View style={styles.searchTabsContainer}>
+            <Pressable
+              style={[
+                styles.searchTab,
+                activeTab === 'users' && {
+                  borderBottomColor: COLORS.accent,
+                  borderBottomWidth: 2,
+                },
+              ]}
+              onPress={() => setActiveTab('users')}
+            >
+              <Text
+                style={[
+                  styles.searchTabText,
+                  {
+                    color:
+                      activeTab === 'users'
+                        ? colors.text
+                        : colors.textSecondary,
+                  },
+                  activeTab === 'users' && styles.searchTabTextActive,
+                ]}
+              >
+                Users
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[
+                styles.searchTab,
+                activeTab === 'posts' && {
+                  borderBottomColor: COLORS.accent,
+                  borderBottomWidth: 2,
+                },
+              ]}
+              onPress={() => setActiveTab('posts')}
+            >
+              <Text
+                style={[
+                  styles.searchTabText,
+                  {
+                    color:
+                      activeTab === 'posts'
+                        ? colors.text
+                        : colors.textSecondary,
+                  },
+                  activeTab === 'posts' && styles.searchTabTextActive,
+                ]}
+              >
+                Vehicles
+              </Text>
+            </Pressable>
+          </View>
 
-      {user && <CreatePostButton onPress={handleCreatePost} />}
+          {isSearching ? (
+            <View style={styles.searchLoadingContainer}>
+              <ActivityIndicator size="large" color={COLORS.accent} />
+            </View>
+          ) : activeTab === 'users' ? (
+            <FlatList
+              data={userResults}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }: { item: UserSearchResult }) => (
+                <UserSearchCard
+                  user={item}
+                  isDark={isDark}
+                  onPress={() => handleUserPress(item.id)}
+                />
+              )}
+              contentContainerStyle={[
+                styles.searchListContent,
+                userResults.length === 0 && styles.emptyListContent,
+              ]}
+              ListEmptyComponent={
+                hasSearched ? (
+                  <View style={styles.emptyContainer}>
+                    <Text
+                      style={[
+                        styles.emptySubtitle,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      No users found
+                    </Text>
+                  </View>
+                ) : null
+              }
+            />
+          ) : (
+            <PostGrid
+              posts={postResults}
+              isDark={isDark}
+              onPostPress={handlePostPress}
+            />
+          )}
+        </>
+      ) : (
+        <PostGrid
+          posts={explorePosts}
+          isDark={isDark}
+          onPostPress={handlePostPress}
+          isLoading={isLoadingExplore}
+          onEndReached={hasMoreExplore ? loadMoreExplore : undefined}
+        />
+      )}
+
+      {user && !isSearchActive && <CreatePostButton onPress={handleCreatePost} />}
     </SafeAreaView>
   );
 }
