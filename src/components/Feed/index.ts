@@ -6,3 +6,4 @@ export { FeedScopeToggle } from './FeedScopeToggle';
 export { SearchBar } from './SearchBar';
 export { VisibilityToggle } from './VisibilityToggle';
 export { UserSearchCard } from './UserSearchCard';
+export { VehicleSearchCard } from './VehicleSearchCard';

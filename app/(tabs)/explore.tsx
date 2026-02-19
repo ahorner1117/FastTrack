@@ -1,18 +1,15 @@
-import React, { useEffect, useCallback, useState } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   View,
   Text,
   FlatList,
   Pressable,
-  RefreshControl,
   Alert,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Compass } from 'lucide-react-native';
-
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
 import { COLORS } from '@/src/utils/constants';
@@ -23,11 +20,10 @@ import {
   CreatePostButton,
   SearchBar,
   UserSearchCard,
+  VehicleSearchCard,
 } from '@/src/components/Feed';
 import { PostGrid } from '@/src/components/Profile/PostGrid';
-import type { Post, UserSearchResult } from '@/src/types';
-
-type SearchTab = 'users' | 'posts';
+import type { Post, UserSearchResult, VehicleSearchResult } from '@/src/types';
 
 export default function ExploreScreen() {
   const colorScheme = useColorScheme();
@@ -39,18 +35,16 @@ export default function ExploreScreen() {
   const {
     explorePosts,
     isLoadingExplore,
-    isRefreshingExplore,
     hasMoreExplore,
     fetchExplorePosts,
     loadMoreExplore,
-    refreshExplore,
   } = useFeedStore();
 
   const {
     query,
     activeTab,
     userResults,
-    postResults,
+    vehicleResults,
     isSearching,
     hasSearched,
     setQuery,
@@ -75,6 +69,13 @@ export default function ExploreScreen() {
   const handleUserPress = useCallback(
     (userId: string) => {
       router.push(`/user/${userId}`);
+    },
+    [router]
+  );
+
+  const handleVehiclePress = useCallback(
+    (vehicleId: string) => {
+      router.push(`/user/vehicle/${vehicleId}`);
     },
     [router]
   );
@@ -116,105 +117,132 @@ export default function ExploreScreen() {
         />
       </View>
 
-      {isSearchActive ? (
-        <>
-          {/* Search tab toggle */}
-          <View style={styles.searchTabsContainer}>
-            <Pressable
+      {/* Search results - always mounted, hidden via display to preserve keyboard */}
+      <View style={isSearchActive ? styles.flexContent : styles.hiddenContent}>
+        <View style={styles.searchTabsContainer}>
+          <Pressable
+            style={[
+              styles.searchTab,
+              activeTab === 'users' && {
+                borderBottomColor: COLORS.accent,
+                borderBottomWidth: 2,
+              },
+            ]}
+            onPress={() => setActiveTab('users')}
+          >
+            <Text
               style={[
-                styles.searchTab,
-                activeTab === 'users' && {
-                  borderBottomColor: COLORS.accent,
-                  borderBottomWidth: 2,
+                styles.searchTabText,
+                {
+                  color:
+                    activeTab === 'users'
+                      ? colors.text
+                      : colors.textSecondary,
                 },
+                activeTab === 'users' && styles.searchTabTextActive,
               ]}
-              onPress={() => setActiveTab('users')}
             >
-              <Text
-                style={[
-                  styles.searchTabText,
-                  {
-                    color:
-                      activeTab === 'users'
-                        ? colors.text
-                        : colors.textSecondary,
-                  },
-                  activeTab === 'users' && styles.searchTabTextActive,
-                ]}
-              >
-                Users
-              </Text>
-            </Pressable>
-            <Pressable
+              Users
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[
+              styles.searchTab,
+              activeTab === 'vehicles' && {
+                borderBottomColor: COLORS.accent,
+                borderBottomWidth: 2,
+              },
+            ]}
+            onPress={() => setActiveTab('vehicles')}
+          >
+            <Text
               style={[
-                styles.searchTab,
-                activeTab === 'posts' && {
-                  borderBottomColor: COLORS.accent,
-                  borderBottomWidth: 2,
+                styles.searchTabText,
+                {
+                  color:
+                    activeTab === 'vehicles'
+                      ? colors.text
+                      : colors.textSecondary,
                 },
+                activeTab === 'vehicles' && styles.searchTabTextActive,
               ]}
-              onPress={() => setActiveTab('posts')}
             >
-              <Text
-                style={[
-                  styles.searchTabText,
-                  {
-                    color:
-                      activeTab === 'posts'
-                        ? colors.text
-                        : colors.textSecondary,
-                  },
-                  activeTab === 'posts' && styles.searchTabTextActive,
-                ]}
-              >
-                Vehicles
-              </Text>
-            </Pressable>
-          </View>
+              Vehicles
+            </Text>
+          </Pressable>
+        </View>
 
-          {isSearching ? (
-            <View style={styles.searchLoadingContainer}>
-              <ActivityIndicator size="large" color={COLORS.accent} />
-            </View>
-          ) : activeTab === 'users' ? (
-            <FlatList
-              data={userResults}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }: { item: UserSearchResult }) => (
-                <UserSearchCard
-                  user={item}
-                  isDark={isDark}
-                  onPress={() => handleUserPress(item.id)}
-                />
-              )}
-              contentContainerStyle={[
-                styles.searchListContent,
-                userResults.length === 0 && styles.emptyListContent,
-              ]}
-              ListEmptyComponent={
-                hasSearched ? (
-                  <View style={styles.emptyContainer}>
-                    <Text
-                      style={[
-                        styles.emptySubtitle,
-                        { color: colors.textSecondary },
-                      ]}
-                    >
-                      No users found
-                    </Text>
-                  </View>
-                ) : null
-              }
-            />
-          ) : (
-            <PostGrid
-              posts={postResults}
-              isDark={isDark}
-              onPostPress={handlePostPress}
-            />
-          )}
-        </>
-      ) : (
+        {isSearching ? (
+          <View style={styles.searchLoadingContainer}>
+            <ActivityIndicator size="large" color={COLORS.accent} />
+          </View>
+        ) : activeTab === 'users' ? (
+          <FlatList
+            data={userResults}
+            keyExtractor={(item) => item.id}
+            keyboardShouldPersistTaps="handled"
+            renderItem={({ item }: { item: UserSearchResult }) => (
+              <UserSearchCard
+                user={item}
+                isDark={isDark}
+                onPress={() => handleUserPress(item.id)}
+              />
+            )}
+            contentContainerStyle={[
+              styles.searchListContent,
+              userResults.length === 0 && styles.emptyListContent,
+            ]}
+            ListEmptyComponent={
+              hasSearched ? (
+                <View style={styles.emptyContainer}>
+                  <Text
+                    style={[
+                      styles.emptySubtitle,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    No users found
+                  </Text>
+                </View>
+              ) : null
+            }
+          />
+        ) : (
+          <FlatList
+            data={vehicleResults}
+            keyExtractor={(item) => item.id}
+            keyboardShouldPersistTaps="handled"
+            renderItem={({ item }: { item: VehicleSearchResult }) => (
+              <VehicleSearchCard
+                vehicle={item}
+                isDark={isDark}
+                onPress={() => handleVehiclePress(item.id)}
+              />
+            )}
+            contentContainerStyle={[
+              styles.searchListContent,
+              vehicleResults.length === 0 && styles.emptyListContent,
+            ]}
+            ListEmptyComponent={
+              hasSearched ? (
+                <View style={styles.emptyContainer}>
+                  <Text
+                    style={[
+                      styles.emptySubtitle,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    No vehicles found
+                  </Text>
+                </View>
+              ) : null
+            }
+          />
+        )}
+      </View>
+
+      {/* Explore grid - always mounted, hidden via display to preserve state */}
+      <View style={!isSearchActive ? styles.flexContent : styles.hiddenContent}>
         <PostGrid
           posts={explorePosts}
           isDark={isDark}
@@ -222,7 +250,7 @@ export default function ExploreScreen() {
           isLoading={isLoadingExplore}
           onEndReached={hasMoreExplore ? loadMoreExplore : undefined}
         />
-      )}
+      </View>
 
       {user && !isSearchActive && <CreatePostButton onPress={handleCreatePost} />}
     </SafeAreaView>
@@ -287,5 +315,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  flexContent: {
+    flex: 1,
+  },
+  hiddenContent: {
+    display: 'none',
   },
 });

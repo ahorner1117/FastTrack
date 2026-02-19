@@ -4,11 +4,11 @@ import {
   View,
   Text,
   FlatList,
-  Image,
   Pressable,
   Dimensions,
   ActivityIndicator,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { Grid3x3 } from 'lucide-react-native';
 import Colors from '@/constants/Colors';
 import { COLORS } from '@/src/utils/constants';
@@ -61,7 +61,10 @@ export function PostGrid({
           <Image
             source={{ uri: item.image_url }}
             style={styles.gridImage}
-            resizeMode="cover"
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            recyclingKey={item.id}
+            transition={200}
           />
         </Pressable>
       );
@@ -104,6 +107,7 @@ export function PostGrid({
       onEndReachedThreshold={0.5}
       scrollEnabled={scrollEnabled}
       showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
       contentContainerStyle={posts.length === 0 && styles.emptyListContent}
     />
   );

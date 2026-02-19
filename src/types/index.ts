@@ -189,6 +189,19 @@ export interface CloudRun {
   created_at: string;
 }
 
+export interface VehicleSearchResult {
+  id: string;
+  user_id: string;
+  name: string;
+  year: number;
+  make: string;
+  model: string;
+  trim: string | null;
+  photo_uri: string | null;
+  owner_display_name: string | null;
+  owner_username: string | null;
+}
+
 export interface CloudVehicle {
   id: string;
   user_id: string;

@@ -1,14 +1,14 @@
 import { create } from 'zustand';
-import type { Post, UserSearchResult } from '../types';
-import { searchUsers, searchPostsByVehicle } from '../services/searchService';
+import type { UserSearchResult, VehicleSearchResult } from '../types';
+import { searchUsers, searchVehicles } from '../services/searchService';
 
-type SearchTab = 'users' | 'posts';
+type SearchTab = 'users' | 'vehicles';
 
 interface SearchState {
   query: string;
   activeTab: SearchTab;
   userResults: UserSearchResult[];
-  postResults: Post[];
+  vehicleResults: VehicleSearchResult[];
   isSearching: boolean;
   hasSearched: boolean;
 
@@ -18,15 +18,30 @@ interface SearchState {
   clear: () => void;
 }
 
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
 export const useSearchStore = create<SearchState>((set, get) => ({
   query: '',
   activeTab: 'users',
   userResults: [],
-  postResults: [],
+  vehicleResults: [],
   isSearching: false,
   hasSearched: false,
 
-  setQuery: (query) => set({ query }),
+  setQuery: (query) => {
+    set({ query });
+
+    if (debounceTimer) clearTimeout(debounceTimer);
+
+    if (!query.trim()) {
+      set({ userResults: [], vehicleResults: [], hasSearched: false });
+      return;
+    }
+
+    debounceTimer = setTimeout(() => {
+      get().search();
+    }, 300);
+  },
 
   setActiveTab: (activeTab) => set({ activeTab }),
 
@@ -36,15 +51,18 @@ export const useSearchStore = create<SearchState>((set, get) => ({
 
     set({ isSearching: true });
     try {
-      const [users, posts] = await Promise.all([
+      const [users, vehicles] = await Promise.all([
         searchUsers(query.trim()),
-        searchPostsByVehicle(query.trim()),
+        searchVehicles(query.trim()),
       ]);
-      set({
-        userResults: users,
-        postResults: posts,
-        hasSearched: true,
-      });
+      // Only apply results if query hasn't changed during the request
+      if (get().query.trim() === query.trim()) {
+        set({
+          userResults: users,
+          vehicleResults: vehicles,
+          hasSearched: true,
+        });
+      }
     } catch (error: any) {
       console.error('Search error:', error);
     } finally {
@@ -52,12 +70,14 @@ export const useSearchStore = create<SearchState>((set, get) => ({
     }
   },
 
-  clear: () =>
+  clear: () => {
+    if (debounceTimer) clearTimeout(debounceTimer);
     set({
       query: '',
       userResults: [],
-      postResults: [],
+      vehicleResults: [],
       isSearching: false,
       hasSearched: false,
-    }),
+    });
+  },
 }));

@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import type { Post, UserSearchResult } from '../types';
+import type { UserSearchResult, VehicleSearchResult } from '../types';
 
 export async function searchUsers(
   query: string,
@@ -19,30 +19,37 @@ export async function searchUsers(
   return (data || []) as UserSearchResult[];
 }
 
-export async function searchPostsByVehicle(
+export async function searchVehicles(
   query: string,
-  limit = 30,
-  offset = 0
-): Promise<Post[]> {
-  // Search for public posts that have a run with a matching vehicle_name
+  limit = 20
+): Promise<VehicleSearchResult[]> {
   const { data, error } = await supabase
-    .from('posts')
+    .from('vehicles')
     .select(
       `
-      *,
-      profile:profiles!posts_user_id_fkey(id, display_name, avatar_url),
-      run:runs!inner(zero_to_sixty_time, vehicle_name)
+      id, user_id, name, year, make, model, trim, photo_uri,
+      profile:profiles!vehicles_user_id_fkey(display_name, username)
     `
     )
-    .eq('visibility', 'public')
-    .ilike('run.vehicle_name', `%${query}%`)
-    .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1);
+    .or(`make.ilike.%${query}%,model.ilike.%${query}%,trim.ilike.%${query}%,name.ilike.%${query}%`)
+    .order('year', { ascending: false })
+    .limit(limit);
 
   if (error) {
-    console.error('Error searching posts by vehicle:', error);
+    console.error('Error searching vehicles:', error);
     throw error;
   }
 
-  return (data || []) as Post[];
+  return (data || []).map((row: any) => ({
+    id: row.id,
+    user_id: row.user_id,
+    name: row.name,
+    year: row.year,
+    make: row.make,
+    model: row.model,
+    trim: row.trim,
+    photo_uri: row.photo_uri,
+    owner_display_name: row.profile?.display_name ?? null,
+    owner_username: row.profile?.username ?? null,
+  }));
 }
