@@ -785,19 +785,6 @@ export default function SettingsScreen() {
           </Text>
         </TouchableOpacity>
 
-        <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-        <TouchableOpacity
-          style={styles.signOutRow}
-          onPress={handleDeleteAccount}
-          disabled={isDeletingAccount}
-        >
-          <Trash2 color={colors.error} size={20} />
-          <Text style={[styles.signOutText, { color: colors.error }]}>
-            {isDeletingAccount ? 'Deleting...' : 'Delete Account'}
-          </Text>
-          {isDeletingAccount && <ActivityIndicator size="small" color={colors.error} style={{ marginLeft: 'auto' }} />}
-        </TouchableOpacity>
       </Card>
 
       {isAdmin && (
@@ -936,6 +923,18 @@ export default function SettingsScreen() {
           />
         </SettingRow>
       </Card>
+
+      <TouchableOpacity
+        style={styles.deleteAccountRow}
+        onPress={handleDeleteAccount}
+        disabled={isDeletingAccount}
+      >
+        <Trash2 color={colors.textSecondary} size={16} />
+        <Text style={[styles.deleteAccountText, { color: colors.textSecondary }]}>
+          {isDeletingAccount ? 'Deleting...' : 'Delete Account'}
+        </Text>
+        {isDeletingAccount && <ActivityIndicator size="small" color={colors.textSecondary} style={{ marginLeft: 'auto' }} />}
+      </TouchableOpacity>
 
       <Text style={[styles.versionText, { color: colors.textSecondary }]}>
         FastTrack v{Constants.expoConfig?.version ?? '1.2.2'}
@@ -1239,6 +1238,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   otpCancelText: {
+    fontSize: 13,
+  },
+  deleteAccountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 32,
+    paddingVertical: 8,
+  },
+  deleteAccountText: {
     fontSize: 13,
   },
 });
