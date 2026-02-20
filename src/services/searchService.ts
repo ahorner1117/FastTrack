@@ -70,6 +70,7 @@ export async function searchVehicles(
     model: row.model,
     trim: row.trim,
     photo_uri: row.photo_uri,
+    thumbnail_url: row.thumbnail_url ?? null,
     owner_display_name: profileMap.get(row.user_id)?.display_name ?? null,
     owner_username: profileMap.get(row.user_id)?.username ?? null,
   }));
