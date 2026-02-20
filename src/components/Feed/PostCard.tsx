@@ -48,7 +48,7 @@ function formatTime(ms: number): string {
   return seconds.toFixed(2) + 's';
 }
 
-export function PostCard({
+function PostCardComponent({
   post,
   isDark,
   currentUserId,
@@ -100,7 +100,7 @@ export function PostCard({
           >
             {post.profile?.avatar_url ? (
               <Image
-                source={{ uri: post.profile.avatar_url }}
+                source={{ uri: post.profile.avatar_url, cache: 'force-cache' }}
                 style={styles.avatarImage}
               />
             ) : (
@@ -133,7 +133,7 @@ export function PostCard({
 
       {/* Image */}
       <Image
-        source={{ uri: post.image_url }}
+        source={{ uri: post.image_url, cache: 'force-cache' }}
         style={styles.image}
         resizeMode="cover"
       />
@@ -268,3 +268,5 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 });
+
+export const PostCard = React.memo(PostCardComponent);

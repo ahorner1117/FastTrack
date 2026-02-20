@@ -59,7 +59,7 @@ export function PostGrid({
           onPress={() => onPostPress(item)}
         >
           <Image
-            source={{ uri: item.image_url }}
+            source={{ uri: item.thumbnail_url || item.image_url, cache: 'force-cache' }}
             style={styles.gridImage}
             resizeMode="cover"
           />
@@ -106,6 +106,15 @@ export function PostGrid({
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
       contentContainerStyle={posts.length === 0 && styles.emptyListContent}
+      getItemLayout={(_, index) => ({
+        length: cellSize + GRID_GAP,
+        offset: (cellSize + GRID_GAP) * Math.floor(index / NUM_COLUMNS),
+        index,
+      })}
+      maxToRenderPerBatch={9}
+      initialNumToRender={9}
+      removeClippedSubviews={true}
+      windowSize={5}
     />
   );
 }

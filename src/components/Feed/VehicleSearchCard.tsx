@@ -23,7 +23,7 @@ export function VehicleSearchCard({ vehicle, isDark, onPress }: VehicleSearchCar
     >
       {vehicle.photo_uri ? (
         <Image
-          source={{ uri: vehicle.photo_uri }}
+          source={{ uri: vehicle.thumbnail_url || vehicle.photo_uri, cache: 'force-cache' }}
           style={styles.photo}
           resizeMode="cover"
         />

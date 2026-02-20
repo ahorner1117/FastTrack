@@ -15,7 +15,7 @@ export function VehicleImage({ photoUri, size = 64, isDark = true }: VehicleImag
   if (photoUri) {
     return (
       <Image
-        source={{ uri: photoUri }}
+        source={{ uri: photoUri, cache: 'force-cache' }}
         style={[
           styles.image,
           {
