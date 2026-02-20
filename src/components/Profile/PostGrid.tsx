@@ -106,7 +106,7 @@ export function PostGrid({
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
       contentContainerStyle={posts.length === 0 && styles.emptyListContent}
-      getItemLayout={(_, index) => ({
+      getItemLayout={ListHeaderComponent ? undefined : (_, index) => ({
         length: cellSize + GRID_GAP,
         offset: (cellSize + GRID_GAP) * Math.floor(index / NUM_COLUMNS),
         index,

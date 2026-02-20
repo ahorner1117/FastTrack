@@ -192,6 +192,14 @@ export const useFeedStore = create<FeedState>((set, get) => ({
     set({ isRefreshingExplore: true, error: null });
     try {
       const posts = await getPosts('global', PAGE_SIZE, 0, 'public');
+
+      // Prefetch thumbnails for instant rendering
+      const { Image: RNImage } = require('react-native');
+      posts.forEach((post: Post) => {
+        const url = post.thumbnail_url || post.image_url;
+        if (url) RNImage.prefetch(url);
+      });
+
       set({
         explorePosts: posts,
         hasMoreExplore: posts.length === PAGE_SIZE,

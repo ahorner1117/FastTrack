@@ -1,10 +1,11 @@
 import { getInfoAsync } from 'expo-file-system/legacy';
 
 // Lazy import to avoid crash when native module isn't available (Expo Go)
-let ImageManipulator: typeof import('expo-image-manipulator') | null = null;
+// undefined = not yet attempted, null = tried and unavailable
+let ImageManipulator: typeof import('expo-image-manipulator') | null | undefined = undefined;
 
 async function getImageManipulator() {
-  if (ImageManipulator === null) {
+  if (ImageManipulator === undefined) {
     try {
       ImageManipulator = await import('expo-image-manipulator');
     } catch {
