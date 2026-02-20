@@ -88,6 +88,15 @@ export async function compressPostImage(uri: string): Promise<string> {
   });
 }
 
+export async function compressThumbnail(uri: string): Promise<string> {
+  return compressImage(uri, {
+    maxWidth: 300,
+    maxHeight: 300,
+    quality: 0.7,
+    format: 'jpeg',
+  });
+}
+
 export async function getFileSize(uri: string): Promise<number> {
   try {
     const info = await getInfoAsync(uri);
