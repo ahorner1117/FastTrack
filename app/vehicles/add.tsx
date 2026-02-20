@@ -54,10 +54,11 @@ export default function AddVehicleScreen() {
 
     const vehicleId = `vehicle_${now}`;
     let finalPhotoUri = photoUri;
+    let finalThumbnailUri: string | undefined;
 
     // Upload image to Supabase if we have a local image
     if (photoUri && !isSupabaseUrl(photoUri)) {
-      const { url, error } = await uploadVehicleImage(photoUri, vehicleId);
+      const { url, thumbnailUrl: thumbUrl, error } = await uploadVehicleImage(photoUri, vehicleId);
       if (error) {
         setIsSubmitting(false);
         if (error.type === 'not_authenticated') {
@@ -69,6 +70,7 @@ export default function AddVehicleScreen() {
         }
       } else if (url) {
         finalPhotoUri = url;
+        finalThumbnailUri = thumbUrl || undefined;
       }
     }
 
@@ -82,6 +84,7 @@ export default function AddVehicleScreen() {
       model: data.model.trim(),
       trim: trimmed || undefined,
       photoUri: finalPhotoUri,
+      thumbnailUri: finalThumbnailUri,
       upgrades: data.upgrades,
       notes: data.notes.trim() || undefined,
       createdAt: now,

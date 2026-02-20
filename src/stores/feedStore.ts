@@ -209,7 +209,7 @@ export const useFeedStore = create<FeedState>((set, get) => ({
     const tempId = `temp-${Date.now()}`;
 
     // Upload image first
-    const { url, error: uploadError } = await uploadPostImage(
+    const { url, thumbnailUrl, error: uploadError } = await uploadPostImage(
       localImageUri,
       tempId
     );
@@ -222,6 +222,7 @@ export const useFeedStore = create<FeedState>((set, get) => ({
       // Create the post
       const post = await createPost({
         image_url: url,
+        thumbnail_url: thumbnailUrl || undefined,
         caption,
         vehicle_id: vehicleId,
         run_id: runId,
