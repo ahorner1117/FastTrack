@@ -25,7 +25,7 @@ export async function searchVehicles(
 ): Promise<VehicleSearchResult[]> {
   const { data, error } = await supabase
     .from('vehicles')
-    .select('id, user_id, name, year, make, model, trim, photo_uri')
+    .select('id, user_id, name, year, make, model, trim, photo_uri, thumbnail_url')
     .or(`make.ilike.*${query}*,model.ilike.*${query}*,trim.ilike.*${query}*,name.ilike.*${query}*`)
     .order('year', { ascending: false })
     .limit(limit);
@@ -44,6 +44,7 @@ export async function searchVehicles(
     model: string;
     trim: string | null;
     photo_uri: string | null;
+    thumbnail_url: string | null;
   }>;
 
   // Fetch owner profiles for the vehicle results
@@ -70,6 +71,7 @@ export async function searchVehicles(
     model: row.model,
     trim: row.trim,
     photo_uri: row.photo_uri,
+    thumbnail_url: row.thumbnail_url ?? null,
     owner_display_name: profileMap.get(row.user_id)?.display_name ?? null,
     owner_username: profileMap.get(row.user_id)?.username ?? null,
   }));

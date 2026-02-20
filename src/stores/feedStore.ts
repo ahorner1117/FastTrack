@@ -145,6 +145,14 @@ export const useFeedStore = create<FeedState>((set, get) => ({
     set({ isLoadingExplore: true, error: null });
     try {
       const posts = await getPosts('global', PAGE_SIZE, 0, 'public');
+
+      // Prefetch thumbnails for instant rendering
+      const { Image: RNImage } = require('react-native');
+      posts.forEach((post: Post) => {
+        const url = post.thumbnail_url || post.image_url;
+        if (url) RNImage.prefetch(url);
+      });
+
       set({
         explorePosts: posts,
         hasMoreExplore: posts.length === PAGE_SIZE,
@@ -162,6 +170,14 @@ export const useFeedStore = create<FeedState>((set, get) => ({
     set({ isLoadingExplore: true });
     try {
       const newPosts = await getPosts('global', PAGE_SIZE, explorePosts.length, 'public');
+
+      // Prefetch thumbnails for instant rendering
+      const { Image: RNImage } = require('react-native');
+      newPosts.forEach((post: Post) => {
+        const url = post.thumbnail_url || post.image_url;
+        if (url) RNImage.prefetch(url);
+      });
+
       set({
         explorePosts: [...explorePosts, ...newPosts],
         hasMoreExplore: newPosts.length === PAGE_SIZE,
@@ -176,6 +192,14 @@ export const useFeedStore = create<FeedState>((set, get) => ({
     set({ isRefreshingExplore: true, error: null });
     try {
       const posts = await getPosts('global', PAGE_SIZE, 0, 'public');
+
+      // Prefetch thumbnails for instant rendering
+      const { Image: RNImage } = require('react-native');
+      posts.forEach((post: Post) => {
+        const url = post.thumbnail_url || post.image_url;
+        if (url) RNImage.prefetch(url);
+      });
+
       set({
         explorePosts: posts,
         hasMoreExplore: posts.length === PAGE_SIZE,
@@ -209,7 +233,7 @@ export const useFeedStore = create<FeedState>((set, get) => ({
     const tempId = `temp-${Date.now()}`;
 
     // Upload image first
-    const { url, error: uploadError } = await uploadPostImage(
+    const { url, thumbnailUrl, error: uploadError } = await uploadPostImage(
       localImageUri,
       tempId
     );
@@ -222,6 +246,7 @@ export const useFeedStore = create<FeedState>((set, get) => ({
       // Create the post
       const post = await createPost({
         image_url: url,
+        thumbnail_url: thumbnailUrl || undefined,
         caption,
         vehicle_id: vehicleId,
         run_id: runId,

@@ -27,8 +27,8 @@ export function VehicleShowcase({
   if (vehicles.length === 0) return null;
 
   const getPhotoUri = (vehicle: Vehicle | CloudVehicle): string | null | undefined => {
-    if ('photoUri' in vehicle) return vehicle.photoUri;
-    if ('photo_uri' in vehicle) return vehicle.photo_uri;
+    if ('photoUri' in vehicle) return (vehicle as Vehicle).thumbnailUri || vehicle.photoUri;
+    if ('photo_uri' in vehicle) return (vehicle as CloudVehicle).thumbnail_url || vehicle.photo_uri;
     return null;
   };
 
@@ -45,7 +45,7 @@ export function VehicleShowcase({
         onPress={() => onVehiclePress?.(item)}
       >
         {photoUri ? (
-          <Image source={{ uri: photoUri }} style={styles.vehicleImage} />
+          <Image source={{ uri: photoUri, cache: 'force-cache' }} style={styles.vehicleImage} />
         ) : (
           <View
             style={[

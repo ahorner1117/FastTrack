@@ -45,6 +45,7 @@ export interface Vehicle {
   model: string;
   trim?: string;
   photoUri?: string;
+  thumbnailUri?: string;
   upgrades: VehicleUpgrade[];
   notes?: string;
   createdAt: number;
@@ -198,6 +199,7 @@ export interface VehicleSearchResult {
   model: string;
   trim: string | null;
   photo_uri: string | null;
+  thumbnail_url: string | null;
   owner_display_name: string | null;
   owner_username: string | null;
 }
@@ -213,6 +215,7 @@ export interface CloudVehicle {
   model: string;
   trim: string | null;
   photo_uri: string | null;
+  thumbnail_url: string | null;
   upgrades: string[];
   notes: string | null;
   created_at: string;
@@ -242,6 +245,7 @@ export interface Post {
   id: string;
   user_id: string;
   image_url: string;
+  thumbnail_url: string | null;
   caption: string | null;
   vehicle_id: string | null;
   run_id: string | null;
@@ -268,6 +272,7 @@ export interface PostComment {
 
 export interface CreatePostInput {
   image_url: string;
+  thumbnail_url?: string;
   caption?: string;
   vehicle_id?: string;
   run_id?: string;

@@ -1,10 +1,11 @@
 import { getInfoAsync } from 'expo-file-system/legacy';
 
 // Lazy import to avoid crash when native module isn't available (Expo Go)
-let ImageManipulator: typeof import('expo-image-manipulator') | null = null;
+// undefined = not yet attempted, null = tried and unavailable
+let ImageManipulator: typeof import('expo-image-manipulator') | null | undefined = undefined;
 
 async function getImageManipulator() {
-  if (ImageManipulator === null) {
+  if (ImageManipulator === undefined) {
     try {
       ImageManipulator = await import('expo-image-manipulator');
     } catch {
@@ -84,6 +85,15 @@ export async function compressPostImage(uri: string): Promise<string> {
     maxWidth: 1200,
     maxHeight: 1200,
     quality: 0.8,
+    format: 'jpeg',
+  });
+}
+
+export async function compressThumbnail(uri: string): Promise<string> {
+  return compressImage(uri, {
+    maxWidth: 300,
+    maxHeight: 300,
+    quality: 0.7,
     format: 'jpeg',
   });
 }

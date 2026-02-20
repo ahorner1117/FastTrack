@@ -62,10 +62,11 @@ export default function EditVehicleScreen() {
     setIsSubmitting(true);
 
     let finalPhotoUri = photoUri;
+    let finalThumbnailUri: string | undefined = vehicle.thumbnailUri;
 
     // Upload image to Supabase if we have a new local image
     if (photoUri && !isSupabaseUrl(photoUri)) {
-      const { url, error } = await uploadVehicleImage(photoUri, id);
+      const { url, thumbnailUrl: thumbUrl, error } = await uploadVehicleImage(photoUri, id);
       if (error) {
         setIsSubmitting(false);
         if (error.type === 'not_authenticated') {
@@ -77,6 +78,7 @@ export default function EditVehicleScreen() {
         }
       } else if (url) {
         finalPhotoUri = url;
+        finalThumbnailUri = thumbUrl || undefined;
       }
     }
 
@@ -89,6 +91,7 @@ export default function EditVehicleScreen() {
       model: data.model.trim(),
       trim: trimmed || undefined,
       photoUri: finalPhotoUri,
+      thumbnailUri: finalThumbnailUri,
       upgrades: data.upgrades,
       notes: data.notes.trim() || undefined,
     });

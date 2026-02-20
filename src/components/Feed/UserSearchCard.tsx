@@ -20,7 +20,7 @@ export function UserSearchCard({ user, isDark, onPress }: UserSearchCardProps) {
       onPress={onPress}
     >
       {user.avatar_url ? (
-        <Image source={{ uri: user.avatar_url }} style={styles.avatar} />
+        <Image source={{ uri: user.avatar_url, cache: 'force-cache' }} style={styles.avatar} />
       ) : (
         <View
           style={[
