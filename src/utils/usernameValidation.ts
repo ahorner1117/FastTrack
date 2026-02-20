@@ -1,6 +1,8 @@
 import reservedUsernames from './reservedUsernames.json';
+import reservedVehicleMakes from './reservedVehicleMakes.json';
 
 const reservedSet = new Set(reservedUsernames);
+const vehicleMakeSet = new Set(reservedVehicleMakes);
 
 // Subset of words that should be blocked even as substrings within a username
 const bannedSubstrings = [
@@ -13,16 +15,46 @@ const bannedSubstrings = [
   'porn', 'pornhub', 'onlyfans',
 ];
 
-export function isReservedUsername(username: string): boolean {
+export type UsernameValidationResult =
+  | { allowed: true }
+  | { allowed: false; reason: 'reserved' | 'vehicle_make'; message: string };
+
+export function validateUsername(username: string): UsernameValidationResult {
   const normalized = username.toLowerCase().trim();
 
-  // Exact match against the full reserved list
-  if (reservedSet.has(normalized)) return true;
-
-  // Substring match against the banned words
-  for (const word of bannedSubstrings) {
-    if (normalized.includes(word)) return true;
+  // Check vehicle makes first (custom message)
+  if (vehicleMakeSet.has(normalized)) {
+    return {
+      allowed: false,
+      reason: 'vehicle_make',
+      message: 'This username is taken, inquire about obtaining this username',
+    };
   }
 
-  return false;
+  // Exact match against the reserved list
+  if (reservedSet.has(normalized)) {
+    return {
+      allowed: false,
+      reason: 'reserved',
+      message: 'This username is not available',
+    };
+  }
+
+  // Substring match against banned words
+  for (const word of bannedSubstrings) {
+    if (normalized.includes(word)) {
+      return {
+        allowed: false,
+        reason: 'reserved',
+        message: 'This username is not available',
+      };
+    }
+  }
+
+  return { allowed: true };
+}
+
+/** Simple boolean check for backwards compatibility */
+export function isReservedUsername(username: string): boolean {
+  return !validateUsername(username).allowed;
 }

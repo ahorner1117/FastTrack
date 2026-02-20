@@ -41,6 +41,9 @@ credentials.json
 # Claude Code
 CLAUDE.md
 
+# Reserved usernames/vehicle makes (sensitive content lists)
+src/utils/reservedUsernames.json
+
 # Supabase migrations
 supabase/migrations/
 

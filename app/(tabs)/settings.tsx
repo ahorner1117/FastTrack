@@ -27,7 +27,7 @@ import { useAuthStore } from '@/src/stores/authStore';
 import { useSettingsStore } from '@/src/stores/settingsStore';
 import type { Appearance, GPSAccuracy, UnitSystem } from '@/src/types';
 import { COLORS } from '@/src/utils/constants';
-import { isReservedUsername } from '@/src/utils/usernameValidation';
+import { validateUsername } from '@/src/utils/usernameValidation';
 
 const APPEARANCE_OPTIONS: { value: Appearance; label: string }[] = [
   { value: 'system', label: 'System' },
@@ -439,8 +439,9 @@ export default function SettingsScreen() {
       return;
     }
 
-    if (isReservedUsername(newUsername)) {
-      setUsernameError('This username is not available');
+    const validation = validateUsername(newUsername);
+    if (!validation.allowed) {
+      setUsernameError(validation.message);
       return;
     }
 

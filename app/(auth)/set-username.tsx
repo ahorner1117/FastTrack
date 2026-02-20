@@ -20,7 +20,7 @@ import {
   updateProfile,
   getProfile,
 } from '@/src/services/authService';
-import { isReservedUsername } from '@/src/utils/usernameValidation';
+import { validateUsername } from '@/src/utils/usernameValidation';
 
 const USERNAME_REGEX = /^[a-zA-Z0-9_]+$/;
 
@@ -62,8 +62,9 @@ export default function SetUsernameScreen() {
       return;
     }
 
-    if (isReservedUsername(username)) {
-      setUsernameError('This username is not available');
+    const validation = validateUsername(username);
+    if (!validation.allowed) {
+      setUsernameError(validation.message);
       return;
     }
 
