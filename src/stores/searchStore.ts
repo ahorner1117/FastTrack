@@ -65,6 +65,7 @@ export const useSearchStore = create<SearchState>((set, get) => ({
       }
     } catch (error: any) {
       console.error('Search error:', error);
+      set({ hasSearched: true });
     } finally {
       set({ isSearching: false });
     }

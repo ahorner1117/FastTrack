@@ -19,7 +19,7 @@ interface SettingsState extends Settings {
 const defaultSettings: Settings = {
   unitSystem: 'imperial',
   appearance: 'system',
-  gpsAccuracy: 'high',
+  gpsAccuracy: 'medium',
   hapticFeedback: true,
   autoSaveRuns: true,
   defaultVehicleId: null,
