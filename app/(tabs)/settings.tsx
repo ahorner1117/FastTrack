@@ -27,6 +27,7 @@ import { useAuthStore } from '@/src/stores/authStore';
 import { useSettingsStore } from '@/src/stores/settingsStore';
 import type { Appearance, GPSAccuracy, UnitSystem } from '@/src/types';
 import { COLORS } from '@/src/utils/constants';
+import { isReservedUsername } from '@/src/utils/usernameValidation';
 
 const APPEARANCE_OPTIONS: { value: Appearance; label: string }[] = [
   { value: 'system', label: 'System' },
@@ -435,6 +436,11 @@ export default function SettingsScreen() {
 
     if (!/^[a-zA-Z0-9_]+$/.test(newUsername)) {
       setUsernameError('Letters, numbers, and underscores only');
+      return;
+    }
+
+    if (isReservedUsername(newUsername)) {
+      setUsernameError('This username is not available');
       return;
     }
 

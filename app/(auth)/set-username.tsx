@@ -20,6 +20,7 @@ import {
   updateProfile,
   getProfile,
 } from '@/src/services/authService';
+import { isReservedUsername } from '@/src/utils/usernameValidation';
 
 const USERNAME_REGEX = /^[a-zA-Z0-9_]+$/;
 
@@ -58,6 +59,11 @@ export default function SetUsernameScreen() {
 
     if (!USERNAME_REGEX.test(username)) {
       setUsernameError('Letters, numbers, and underscores only');
+      return;
+    }
+
+    if (isReservedUsername(username)) {
+      setUsernameError('This username is not available');
       return;
     }
 
