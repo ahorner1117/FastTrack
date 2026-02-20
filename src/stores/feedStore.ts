@@ -286,6 +286,27 @@ export const useFeedStore = create<FeedState>((set, get) => ({
         await unlikePost(postId);
       } else {
         await likePost(postId);
+
+        // Fire-and-forget: notify post owner of the like
+        if (post.user_id) {
+          supabase.auth.getUser().then(({ data: { user } }) => {
+            if (!user || user.id === post.user_id) return;
+            supabase
+              .from('profiles')
+              .select('display_name')
+              .eq('id', user.id)
+              .single()
+              .then(({ data: profile }) => {
+                const likerName = profile?.display_name || 'Someone';
+                sendPushNotification(
+                  post.user_id,
+                  'New Like',
+                  `${likerName} liked your post`,
+                  { screen: 'post', postId: post.id }
+                ).catch(console.error);
+              });
+          }).catch(console.error);
+        }
       }
     } catch (error) {
       // Revert on error
@@ -351,7 +372,8 @@ export const useFeedStore = create<FeedState>((set, get) => ({
           sendPushNotification(
             currentPost.user_id,
             'New Comment',
-            `${commenterName} commented on your post`
+            `${commenterName} commented on your post`,
+            { screen: 'post', postId: postId }
           ).catch(console.error);
         }
 
@@ -371,7 +393,8 @@ export const useFeedStore = create<FeedState>((set, get) => ({
                 sendPushNotification(
                   mentioned.id,
                   'You were mentioned',
-                  `${commenterName} mentioned you in a comment`
+                  `${commenterName} mentioned you in a comment`,
+                  { screen: 'post', postId: postId }
                 ).catch(console.error);
               }
             });

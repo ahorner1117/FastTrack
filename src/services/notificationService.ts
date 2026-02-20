@@ -85,7 +85,8 @@ export async function registerAndSavePushToken(): Promise<void> {
 export async function sendPushNotification(
   recipientUserId: string,
   title: string,
-  body: string
+  body: string,
+  data?: Record<string, string>
 ): Promise<void> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return;
@@ -95,6 +96,7 @@ export async function sendPushNotification(
       recipient_user_id: recipientUserId,
       title,
       body,
+      data: data ?? { screen: 'notifications' },
     },
   });
 
@@ -103,13 +105,25 @@ export async function sendPushNotification(
   }
 }
 
+export async function sendLocalNotification(
+  title: string,
+  body: string
+): Promise<void> {
+  await Notifications.scheduleNotificationAsync({
+    content: { title, body },
+    trigger: null,
+  });
+}
+
 export function setupNotificationListeners(): () => void {
   // Handle notification taps (when user taps on a notification)
   const responseSubscription =
     Notifications.addNotificationResponseReceivedListener((response) => {
       const data = response.notification.request.content.data;
 
-      if (data?.screen === 'friend-requests' || data?.screen === 'notifications') {
+      if (data?.screen === 'post' && data?.postId) {
+        router.push(`/posts/${data.postId}` as any);
+      } else if (data?.screen === 'friend-requests' || data?.screen === 'notifications') {
         router.push('/notifications' as any);
       }
     });

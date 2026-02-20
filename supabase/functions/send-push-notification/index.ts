@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { recipient_user_id, title, body } = await req.json();
+    const { recipient_user_id, title, body, data } = await req.json();
     if (!recipient_user_id || !title || !body) {
       return new Response(
         JSON.stringify({ error: "recipient_user_id, title, and body are required" }),
@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
         title,
         body,
         sound: "default",
-        data: { screen: "friend-requests" },
+        data: data ?? { screen: "notifications" },
       }),
     });
 

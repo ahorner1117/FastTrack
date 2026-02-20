@@ -231,7 +231,8 @@ function notifyFriendRequest(recipientId: string, senderId: string): void {
     sendPushNotification(
       recipientId,
       'New Friend Request',
-      `${name} sent you a friend request`
+      `${name} sent you a friend request`,
+      { screen: 'notifications' }
     );
   }).catch(console.error);
 }
@@ -241,7 +242,8 @@ function notifyFriendAccepted(originalRequesterId: string, accepterId: string): 
     sendPushNotification(
       originalRequesterId,
       'Friend Request Accepted',
-      `${name} accepted your friend request`
+      `${name} accepted your friend request`,
+      { screen: 'notifications' }
     );
   }).catch(console.error);
 }

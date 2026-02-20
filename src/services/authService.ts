@@ -396,5 +396,5 @@ async function restoreAndSync() {
   await syncAllUnsyncedDrives();
 
   // 5. Register push notifications token
-  registerAndSavePushToken().catch(console.error);
+  await registerAndSavePushToken().catch(console.error);
 }

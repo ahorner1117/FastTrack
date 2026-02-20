@@ -24,14 +24,27 @@ npx tsc --noEmit     # TypeScript type check
 - Bundle ID: `com.anthonyhorner.fasttrack`
 - EAS Project ID: `9311807a-428e-4f90-8fe1-269b7313596a`
 
-**Deploy to TestFlight:**
+**Deploy to App Store Connect (Xcode):**
+```bash
+npm run deploy                  # Build & upload, auto-increment build number
+npm run deploy -- --patch       # Bump patch version (3.4.1 -> 3.4.2) then build
+npm run deploy -- --minor       # Bump minor version (3.4.1 -> 3.5.0) then build
+npm run deploy -- --major       # Bump major version (3.4.1 -> 4.0.0) then build
+```
+
+The deploy script (`scripts/deploy-ios.sh`) handles the full pipeline:
+1. Auto-increments build number (tracked in `.build-number`)
+2. Optionally bumps version in `app.json` and `package.json`
+3. Runs `expo prebuild --platform ios --clean`
+4. Archives via `xcodebuild`
+5. Uploads to App Store Connect
+
+**Deploy via EAS (alternative):**
 ```bash
 eas build --platform ios --profile production              # Build for production
 eas submit --platform ios --latest                         # Submit to App Store Connect
 # OR combine: eas build --platform ios --profile production --auto-submit
 ```
-
-Production builds use auto-incrementing build numbers (configured in `eas.json`).
 
 ## Architecture
 
