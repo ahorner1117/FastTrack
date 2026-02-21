@@ -8,6 +8,7 @@ import {
   Pressable,
   Alert,
   ActivityIndicator,
+  Dimensions,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -29,6 +30,8 @@ import { MentionTextInput } from '@/src/components/common/MentionTextInput';
 import { formatTime, formatSpeedWithUnit } from '@/src/utils/formatting';
 import type { Vehicle, PostVisibility } from '@/src/types';
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
 export default function CreatePostScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -47,7 +50,7 @@ export default function CreatePostScreen() {
   const getDriveById = useDriveHistoryStore((state) => state.getDriveById);
   const unitSystem = useSettingsStore((state) => state.unitSystem);
 
-  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [imageUris, setImageUris] = useState<string[]>([]);
   const [caption, setCaption] = useState('');
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [visibility, setVisibility] = useState<PostVisibility>('public');
@@ -72,6 +75,8 @@ export default function CreatePostScreen() {
   const drive = driveId ? getDriveById(driveId) : null;
 
   const pickImage = useCallback(async () => {
+    if (imageUris.length >= 7) return;
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: 'images',
       allowsEditing: true,
@@ -80,9 +85,9 @@ export default function CreatePostScreen() {
     });
 
     if (!result.canceled && result.assets[0]) {
-      setImageUri(result.assets[0].uri);
+      setImageUris((prev) => [...prev, result.assets[0].uri]);
     }
-  }, []);
+  }, [imageUris.length]);
 
   const searchPlaces = useCallback(async (query: string) => {
     if (query.length < 2) {
@@ -123,15 +128,15 @@ export default function CreatePostScreen() {
   }, [locationQuery, searchPlaces]);
 
   const handleSubmit = async () => {
-    if (!imageUri) {
-      Alert.alert('Image Required', 'Please select an image for your post.');
+    if (imageUris.length === 0) {
+      Alert.alert('Image Required', 'Please select at least one image for your post.');
       return;
     }
 
     setIsSubmitting(true);
     try {
       await createNewPost(
-        imageUri,
+        imageUris,
         caption.trim() || undefined,
         selectedVehicle?.id,
         runId || undefined,
@@ -172,7 +177,7 @@ export default function CreatePostScreen() {
           headerRight: () => (
             <Pressable
               onPress={handleSubmit}
-              disabled={!imageUri || isSubmitting}
+              disabled={imageUris.length === 0 || isSubmitting}
             >
               {isSubmitting ? (
                 <ActivityIndicator size="small" color={COLORS.accent} />
@@ -181,7 +186,7 @@ export default function CreatePostScreen() {
                   style={[
                     styles.postButton,
                     {
-                      color: imageUri ? COLORS.accent : colors.textSecondary,
+                      color: imageUris.length > 0 ? COLORS.accent : colors.textSecondary,
                     },
                   ]}
                 >
@@ -204,21 +209,40 @@ export default function CreatePostScreen() {
           keyboardShouldPersistTaps="handled"
         >
             {/* Image Picker */}
-            <Pressable
-              style={[styles.imagePicker, { backgroundColor: colors.surface }]}
-              onPress={pickImage}
-            >
-              {imageUri ? (
-                <View style={styles.imageContainer}>
-                  <Image source={{ uri: imageUri }} style={styles.image} />
-                  <Pressable
-                    style={styles.removeImageButton}
-                    onPress={() => setImageUri(null)}
-                  >
-                    <X color="#FFFFFF" size={18} />
-                  </Pressable>
+            {imageUris.length > 0 ? (
+              <View style={styles.imageStripContainer}>
+                <View style={styles.imageStrip}>
+                  {imageUris.map((uri, index) => (
+                    <View key={uri} style={styles.imageStripItem}>
+                      <Image source={{ uri }} style={styles.imageStripImage} />
+                      <Pressable
+                        style={styles.removeImageButton}
+                        onPress={() =>
+                          setImageUris((prev) => prev.filter((_, i) => i !== index))
+                        }
+                      >
+                        <X color="#FFFFFF" size={14} />
+                      </Pressable>
+                    </View>
+                  ))}
+                  {imageUris.length < 7 && (
+                    <Pressable
+                      style={[styles.addMoreButton, { backgroundColor: colors.surface }]}
+                      onPress={pickImage}
+                    >
+                      <ImagePlus color={colors.textSecondary} size={24} />
+                    </Pressable>
+                  )}
                 </View>
-              ) : (
+                <Text style={[styles.imageCount, { color: colors.textSecondary }]}>
+                  {imageUris.length}/7 photos
+                </Text>
+              </View>
+            ) : (
+              <Pressable
+                style={[styles.imagePicker, { backgroundColor: colors.surface }]}
+                onPress={pickImage}
+              >
                 <View style={styles.imagePlaceholder}>
                   <ImagePlus color={colors.textSecondary} size={48} />
                   <Text
@@ -227,11 +251,11 @@ export default function CreatePostScreen() {
                       { color: colors.textSecondary },
                     ]}
                   >
-                    Tap to add photo
+                    Tap to add photos
                   </Text>
                 </View>
-              )}
-            </Pressable>
+              </Pressable>
+            )}
 
             {/* Caption */}
             <MentionTextInput
@@ -602,5 +626,35 @@ const styles = StyleSheet.create({
   locationOptionText: {
     flex: 1,
     fontSize: 14,
+  },
+  imageStripContainer: {
+    marginBottom: 16,
+  },
+  imageStrip: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  imageStripItem: {
+    width: (SCREEN_WIDTH - 32 - 16) / 3,
+    aspectRatio: 1,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  imageStripImage: {
+    width: '100%',
+    height: '100%',
+  },
+  addMoreButton: {
+    width: (SCREEN_WIDTH - 32 - 16) / 3,
+    aspectRatio: 1,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageCount: {
+    fontSize: 13,
+    marginTop: 8,
+    textAlign: 'center',
   },
 });
