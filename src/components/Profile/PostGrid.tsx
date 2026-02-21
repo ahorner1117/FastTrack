@@ -39,7 +39,7 @@ export function PostGrid({
   ListHeaderComponent,
   scrollEnabled = true,
   onRefresh,
-  refreshing,
+  refreshing = false,
 }: PostGridProps) {
   const colors = Colors[isDark ? 'dark' : 'light'];
   const cellSize = (SCREEN_WIDTH - GRID_GAP * (NUM_COLUMNS - 1)) / NUM_COLUMNS;

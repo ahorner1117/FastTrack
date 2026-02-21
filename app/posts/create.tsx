@@ -92,6 +92,10 @@ export default function CreatePostScreen() {
     setIsSearchingLocation(true);
     try {
       const apiKey = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY;
+      if (!apiKey) {
+        setIsSearchingLocation(false);
+        return;
+      }
       const response = await fetch(
         `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&types=(cities)&key=${apiKey}`
       );
@@ -135,12 +139,12 @@ export default function CreatePostScreen() {
         visibility,
         locationName || undefined
       );
-      router.back();
       Toast.show({
         type: 'success',
         text1: 'Post shared successfully',
         visibilityTime: 2000,
       });
+      setTimeout(() => router.back(), 300);
     } catch (error: any) {
       Toast.show({
         type: 'error',
@@ -255,20 +259,22 @@ export default function CreatePostScreen() {
             />
 
             {/* Location Picker */}
-            <Pressable
-              style={[styles.locationButton, { backgroundColor: colors.surface }]}
-              onPress={() => setShowLocationPicker(!showLocationPicker)}
-            >
-              <MapPin color={locationName ? COLORS.accent : colors.textSecondary} size={20} />
-              <Text
-                style={[
-                  styles.locationButtonText,
-                  { color: locationName ? colors.text : colors.textSecondary },
-                ]}
-                numberOfLines={1}
+            <View style={[styles.locationButton, { backgroundColor: colors.surface }]}>
+              <Pressable
+                style={styles.locationButtonTouchable}
+                onPress={() => setShowLocationPicker(!showLocationPicker)}
               >
-                {locationName || 'Add Location'}
-              </Text>
+                <MapPin color={locationName ? COLORS.accent : colors.textSecondary} size={20} />
+                <Text
+                  style={[
+                    styles.locationButtonText,
+                    { color: locationName ? colors.text : colors.textSecondary },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {locationName || 'Add Location'}
+                </Text>
+              </Pressable>
               {locationName && (
                 <Pressable
                   onPress={() => {
@@ -282,7 +288,7 @@ export default function CreatePostScreen() {
                   <X color={colors.textSecondary} size={18} />
                 </Pressable>
               )}
-            </Pressable>
+            </View>
 
             {showLocationPicker && (
               <View style={[styles.locationPicker, { backgroundColor: colors.surface }]}>
@@ -302,7 +308,7 @@ export default function CreatePostScreen() {
                 {locationResults.map((result) => (
                   <Pressable
                     key={result.place_id}
-                    style={styles.locationOption}
+                    style={[styles.locationOption, { borderTopColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]}
                     onPress={() => {
                       setLocationName(result.description);
                       setShowLocationPicker(false);
@@ -405,7 +411,7 @@ export default function CreatePostScreen() {
                     ]}
                   >
                     <Pressable
-                      style={styles.vehicleOption}
+                      style={[styles.vehicleOption, { borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]}
                       onPress={() => selectVehicle(null)}
                     >
                       <Text
@@ -420,7 +426,7 @@ export default function CreatePostScreen() {
                     {vehicles.map((vehicle) => (
                       <Pressable
                         key={vehicle.id}
-                        style={styles.vehicleOption}
+                        style={[styles.vehicleOption, { borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]}
                         onPress={() => selectVehicle(vehicle)}
                       >
                         <Text
@@ -546,7 +552,6 @@ const styles = StyleSheet.create({
   vehicleOption: {
     padding: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255,255,255,0.1)',
   },
   vehicleOptionText: {
     fontSize: 15,
@@ -562,6 +567,12 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 12,
     marginBottom: 16,
+    gap: 10,
+  },
+  locationButtonTouchable: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
     gap: 10,
   },
   locationButtonText: {
@@ -587,7 +598,6 @@ const styles = StyleSheet.create({
     padding: 14,
     gap: 10,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(255,255,255,0.1)',
   },
   locationOptionText: {
     flex: 1,
