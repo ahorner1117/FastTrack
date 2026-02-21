@@ -9,7 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { useLocalSearchParams, Stack } from 'expo-router';
-import { User, Shield, Calendar, Edit, Ban, CheckCircle } from 'lucide-react-native';
+import { User, Shield, Calendar, Edit, Ban, CheckCircle, Bell } from 'lucide-react-native';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
 import { COLORS } from '@/src/utils/constants';
@@ -20,6 +20,7 @@ import { VehicleListItem } from '@/src/components/Admin/VehicleListItem';
 import { PostListItem } from '@/src/components/Admin/PostListItem';
 import { EditProfileModal } from '@/src/components/Admin/EditProfileModal';
 import { BanUserModal } from '@/src/components/Admin/BanUserModal';
+import { SendNotificationModal } from '@/src/components/Admin/SendNotificationModal';
 import {
   getUserDetailFull,
   updateUserProfile,
@@ -45,6 +46,7 @@ export default function AdminUserDetailScreen() {
   const [activeTab, setActiveTab] = useState<AdminTab>('profile');
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [banModalVisible, setBanModalVisible] = useState(false);
+  const [notifyModalVisible, setNotifyModalVisible] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -294,6 +296,19 @@ export default function AdminUserDetailScreen() {
                   </Text>
                 </TouchableOpacity>
               )}
+
+              <TouchableOpacity
+                style={[
+                  styles.actionButton,
+                  { backgroundColor: COLORS.secondary + '20' },
+                ]}
+                onPress={() => setNotifyModalVisible(true)}
+              >
+                <Bell size={18} color={COLORS.secondary} />
+                <Text style={[styles.actionButtonText, { color: COLORS.secondary }]}>
+                  Notify
+                </Text>
+              </TouchableOpacity>
             </View>
           </Card>
 
@@ -390,6 +405,14 @@ export default function AdminUserDetailScreen() {
         isDark={isDark}
         onClose={() => setBanModalVisible(false)}
         onBan={handleBanUser}
+      />
+
+      <SendNotificationModal
+        visible={notifyModalVisible}
+        userId={profile.id}
+        userDisplayName={displayName}
+        isDark={isDark}
+        onClose={() => setNotifyModalVisible(false)}
       />
     </>
   );
