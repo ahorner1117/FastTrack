@@ -63,7 +63,10 @@ export function PostGrid({
           onPress={() => onPostPress(item)}
         >
           <Image
-            source={{ uri: item.thumbnail_url || item.image_url, cache: 'force-cache' }}
+            source={{
+              uri: item.images?.[0]?.thumbnail_url || item.images?.[0]?.image_url || item.thumbnail_url || item.image_url,
+              cache: 'force-cache',
+            }}
             style={styles.gridImage}
             resizeMode="cover"
           />
