@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { Pressable } from 'react-native';
 import { X } from 'lucide-react-native';
 import 'react-native-reanimated';
+import Toast from 'react-native-toast-message';
 
 import { useColorScheme } from '@/components/useColorScheme';
 import { useSettingsStore } from '@/src/stores/settingsStore';
@@ -273,6 +274,7 @@ function RootLayoutNav() {
           }}
         />
       </Stack>
+      <Toast />
     </ThemeProvider>
   );
 }
