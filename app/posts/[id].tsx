@@ -25,6 +25,7 @@ import { COLORS } from '@/src/utils/constants';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useFeedStore } from '@/src/stores/feedStore';
 import { CommentCard, CommentInput } from '@/src/components/Feed';
+import { ImageCarousel } from '@/src/components/Feed/ImageCarousel';
 import type { PostComment } from '@/src/types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -220,12 +221,20 @@ export default function PostDetailScreen() {
           )}
         </View>
 
-        {/* Image */}
-        <Image
-          source={{ uri: currentPost.image_url }}
-          style={styles.image}
-          resizeMode="cover"
-        />
+        {/* Images */}
+        {currentPost.images && currentPost.images.length > 0 ? (
+          <ImageCarousel
+            images={currentPost.images}
+            width={SCREEN_WIDTH}
+            height={SCREEN_WIDTH}
+          />
+        ) : (
+          <Image
+            source={{ uri: currentPost.image_url }}
+            style={styles.image}
+            resizeMode="cover"
+          />
+        )}
 
         {/* Run info if attached */}
         {currentPost.run && currentPost.run.zero_to_sixty_time && (
