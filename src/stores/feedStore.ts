@@ -54,7 +54,8 @@ interface FeedState {
     vehicleId?: string,
     runId?: string,
     driveId?: string,
-    visibility?: PostVisibility
+    visibility?: PostVisibility,
+    locationName?: string
   ) => Promise<Post>;
   removePost: (postId: string) => Promise<void>;
   toggleLike: (postId: string) => Promise<void>;
@@ -227,7 +228,8 @@ export const useFeedStore = create<FeedState>((set, get) => ({
     vehicleId?: string,
     runId?: string,
     driveId?: string,
-    visibility?: PostVisibility
+    visibility?: PostVisibility,
+    locationName?: string
   ) => {
     // Generate a temporary ID for the image upload
     const tempId = `temp-${Date.now()}`;
@@ -251,6 +253,7 @@ export const useFeedStore = create<FeedState>((set, get) => ({
         vehicle_id: vehicleId,
         run_id: runId,
         drive_id: driveId,
+        location_name: locationName,
         visibility,
       });
 
