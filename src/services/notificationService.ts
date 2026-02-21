@@ -92,6 +92,9 @@ export async function sendPushNotification(
   if (!session) return;
 
   const { data: result, error } = await supabase.functions.invoke('send-push-notification', {
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+    },
     body: {
       recipient_user_id: recipientUserId,
       title,

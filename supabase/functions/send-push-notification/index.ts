@@ -9,23 +9,32 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Gateway handles JWT verification - authenticated users only
-    // Extract user from Authorization header if available, otherwise trust gateway
+    // Verify the caller is authenticated
     const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      console.error("No Authorization header found");
+      return new Response(JSON.stringify({ error: "Missing authorization" }), {
+        status: 401,
+        headers: jsonHeaders,
+      });
+    }
 
-    // Verify caller is authenticated via either header or gateway
-    if (authHeader) {
-      const supabaseAuth = createClient(
-        Deno.env.get("SUPABASE_URL")!,
-        Deno.env.get("SUPABASE_ANON_KEY")!,
-        { global: { headers: { Authorization: authHeader } } }
-      );
+    const supabaseAuth = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
 
-      const { error: authError } = await supabaseAuth.auth.getUser();
-      if (authError) {
-        console.warn("Auth header present but getUser failed:", authError.message);
-        // Continue anyway - gateway already verified JWT
-      }
+    const {
+      data: { user },
+      error: authError,
+    } = await supabaseAuth.auth.getUser();
+    if (authError || !user) {
+      console.error("Auth failed:", authError?.message);
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: jsonHeaders,
+      });
     }
 
     const { recipient_user_id, title, body, data } = await req.json();
