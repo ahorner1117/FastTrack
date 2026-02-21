@@ -241,6 +241,14 @@ export interface LeaderboardEntry {
 // Social/Posts Types
 export type PostVisibility = 'public' | 'private';
 
+export interface PostImage {
+  id: string;
+  post_id: string;
+  image_url: string;
+  thumbnail_url: string | null;
+  position: number;
+}
+
 export interface Post {
   id: string;
   user_id: string;
@@ -256,6 +264,7 @@ export interface Post {
   comments_count: number;
   created_at: string;
   updated_at: string;
+  images: PostImage[];
   // Joined data
   profile?: Profile;
   run?: { zero_to_sixty_time: number | null; vehicle_name: string | null } | null;
@@ -272,8 +281,6 @@ export interface PostComment {
 }
 
 export interface CreatePostInput {
-  image_url: string;
-  thumbnail_url?: string;
   caption?: string;
   vehicle_id?: string;
   run_id?: string;
