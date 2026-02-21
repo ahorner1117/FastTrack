@@ -7,6 +7,10 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  ScrollView,
+  Platform,
+  Keyboard,
 } from 'react-native';
 import { X } from 'lucide-react-native';
 import Toast from 'react-native-toast-message';
@@ -86,7 +90,10 @@ export function SendNotificationModal({
       presentationStyle="pageSheet"
       onRequestClose={handleClose}
     >
-      <View style={[styles.container, { backgroundColor: bgColor }]}>
+      <KeyboardAvoidingView
+        style={[styles.container, { backgroundColor: bgColor }]}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
         <View style={[styles.header, { borderBottomColor: borderColor }]}>
           <Text style={[styles.headerTitle, { color: textColor }]}>
             Send Notification
@@ -96,7 +103,11 @@ export function SendNotificationModal({
           </TouchableOpacity>
         </View>
 
-        <View style={styles.content}>
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.contentContainer}
+          keyboardShouldPersistTaps="handled"
+        >
           <Text style={[styles.recipient, { color: secondaryColor }]}>
             To: {userDisplayName}
           </Text>
@@ -112,6 +123,7 @@ export function SendNotificationModal({
             placeholder="Notification title"
             placeholderTextColor={secondaryColor}
             maxLength={100}
+            returnKeyType="next"
           />
 
           <Text style={[styles.label, { color: textColor }]}>Message</Text>
@@ -128,11 +140,13 @@ export function SendNotificationModal({
             multiline
             textAlignVertical="top"
             maxLength={500}
+            blurOnSubmit
+            onSubmitEditing={() => Keyboard.dismiss()}
           />
           <Text style={[styles.charCount, { color: secondaryColor }]}>
             {message.length}/500
           </Text>
-        </View>
+        </ScrollView>
 
         <View style={[styles.footer, { borderTopColor: borderColor }]}>
           <TouchableOpacity
@@ -159,7 +173,7 @@ export function SendNotificationModal({
             )}
           </TouchableOpacity>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -185,6 +199,8 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  contentContainer: {
     padding: 16,
   },
   recipient: {
