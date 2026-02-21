@@ -49,9 +49,11 @@ function ExploreContent() {
   const {
     explorePosts,
     isLoadingExplore,
+    isRefreshingExplore,
     hasMoreExplore,
     fetchExplorePosts,
     loadMoreExplore,
+    refreshExplore,
   } = useFeedStore();
 
   const {
@@ -285,6 +287,8 @@ function ExploreContent() {
           onPostPress={handlePostPress}
           isLoading={isLoadingExplore}
           onEndReached={hasMoreExplore ? loadMoreExplore : undefined}
+          onRefresh={refreshExplore}
+          refreshing={isRefreshingExplore}
         />
       </View>
 

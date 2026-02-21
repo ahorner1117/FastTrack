@@ -26,6 +26,8 @@ interface PostGridProps {
   onEndReached?: () => void;
   ListHeaderComponent?: React.ReactElement | null;
   scrollEnabled?: boolean;
+  onRefresh?: () => void;
+  refreshing?: boolean;
 }
 
 export function PostGrid({
@@ -36,6 +38,8 @@ export function PostGrid({
   onEndReached,
   ListHeaderComponent,
   scrollEnabled = true,
+  onRefresh,
+  refreshing,
 }: PostGridProps) {
   const colors = Colors[isDark ? 'dark' : 'light'];
   const cellSize = (SCREEN_WIDTH - GRID_GAP * (NUM_COLUMNS - 1)) / NUM_COLUMNS;
@@ -103,6 +107,8 @@ export function PostGrid({
       onEndReached={onEndReached}
       onEndReachedThreshold={0.5}
       scrollEnabled={scrollEnabled}
+      onRefresh={onRefresh}
+      refreshing={refreshing}
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
       contentContainerStyle={posts.length === 0 && styles.emptyListContent}
