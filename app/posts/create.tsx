@@ -5,12 +5,10 @@ import {
   Text,
   Image,
   Pressable,
-  ScrollView,
   Alert,
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { ImagePlus, X, ChevronDown } from 'lucide-react-native';
@@ -142,14 +140,13 @@ export default function CreatePostScreen() {
         style={[styles.container, { backgroundColor: colors.background }]}
         edges={['bottom']}
       >
-        <KeyboardAvoidingView
+        <KeyboardAwareScrollView
           style={styles.flex}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          contentContainerStyle={styles.scrollContent}
+          enableOnAndroid
+          extraScrollHeight={20}
+          keyboardShouldPersistTaps="handled"
         >
-          <ScrollView
-            style={styles.flex}
-            contentContainerStyle={styles.scrollContent}
-          >
             {/* Image Picker */}
             <Pressable
               style={[styles.imagePicker, { backgroundColor: colors.surface }]}
@@ -331,8 +328,7 @@ export default function CreatePostScreen() {
                 )}
               </View>
             )}
-          </ScrollView>
-        </KeyboardAvoidingView>
+        </KeyboardAwareScrollView>
       </SafeAreaView>
     </>
   );
