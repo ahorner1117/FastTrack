@@ -12,7 +12,7 @@ import {
   deleteComment,
   type FeedScope,
 } from '../services/postsService';
-import { uploadPostImage, deletePostImage } from '../services/postImageService';
+import { uploadPostImages, deletePostImages } from '../services/postImageService';
 import { sendPushNotification } from '../services/notificationService';
 import { supabase } from '../lib/supabase';
 
@@ -49,7 +49,7 @@ interface FeedState {
   // Post actions
   fetchPost: (postId: string) => Promise<void>;
   createNewPost: (
-    localImageUri: string,
+    localImageUris: string[],
     caption?: string,
     vehicleId?: string,
     runId?: string,
@@ -150,7 +150,7 @@ export const useFeedStore = create<FeedState>((set, get) => ({
       // Prefetch thumbnails for instant rendering
       const { Image: RNImage } = require('react-native');
       posts.forEach((post: Post) => {
-        const url = post.thumbnail_url || post.image_url;
+        const url = post.images?.[0]?.thumbnail_url || post.images?.[0]?.image_url || post.thumbnail_url || post.image_url;
         if (url) RNImage.prefetch(url);
       });
 
@@ -175,7 +175,7 @@ export const useFeedStore = create<FeedState>((set, get) => ({
       // Prefetch thumbnails for instant rendering
       const { Image: RNImage } = require('react-native');
       newPosts.forEach((post: Post) => {
-        const url = post.thumbnail_url || post.image_url;
+        const url = post.images?.[0]?.thumbnail_url || post.images?.[0]?.image_url || post.thumbnail_url || post.image_url;
         if (url) RNImage.prefetch(url);
       });
 
@@ -197,7 +197,7 @@ export const useFeedStore = create<FeedState>((set, get) => ({
       // Prefetch thumbnails for instant rendering
       const { Image: RNImage } = require('react-native');
       posts.forEach((post: Post) => {
-        const url = post.thumbnail_url || post.image_url;
+        const url = post.images?.[0]?.thumbnail_url || post.images?.[0]?.image_url || post.thumbnail_url || post.image_url;
         if (url) RNImage.prefetch(url);
       });
 
@@ -223,7 +223,7 @@ export const useFeedStore = create<FeedState>((set, get) => ({
   },
 
   createNewPost: async (
-    localImageUri: string,
+    localImageUris: string[],
     caption?: string,
     vehicleId?: string,
     runId?: string,
@@ -231,49 +231,54 @@ export const useFeedStore = create<FeedState>((set, get) => ({
     visibility?: PostVisibility,
     locationName?: string
   ) => {
-    // Generate a temporary ID for the image upload
     const tempId = `temp-${Date.now()}`;
 
-    // Upload image first
-    const { url, thumbnailUrl, error: uploadError } = await uploadPostImage(
-      localImageUri,
+    // Upload all images
+    const { images: uploadedImages, error: uploadError } = await uploadPostImages(
+      localImageUris,
       tempId
     );
 
-    if (uploadError || !url) {
-      throw new Error(uploadError?.message || 'Failed to upload image');
+    if (uploadError || uploadedImages.length === 0) {
+      throw new Error(uploadError?.message || 'Failed to upload images');
     }
 
     try {
-      // Create the post
-      const post = await createPost({
-        image_url: url,
-        thumbnail_url: thumbnailUrl || undefined,
-        caption,
-        vehicle_id: vehicleId,
-        run_id: runId,
-        drive_id: driveId,
-        location_name: locationName,
-        visibility,
-      });
+      const post = await createPost(
+        {
+          caption,
+          vehicle_id: vehicleId,
+          run_id: runId,
+          drive_id: driveId,
+          location_name: locationName,
+          visibility,
+        },
+        uploadedImages.map((img) => ({
+          url: img.url,
+          thumbnailUrl: img.thumbnailUrl,
+          position: img.position,
+        }))
+      );
 
-      // Add to the beginning of posts list
       set((state) => ({
         posts: [post, ...state.posts],
       }));
 
       return post;
     } catch (error) {
-      // Clean up uploaded image if post creation fails
-      await deletePostImage(tempId);
+      await deletePostImages(tempId, localImageUris.length);
       throw error;
     }
   },
 
   removePost: async (postId: string) => {
+    const { posts } = get();
+    const post = posts.find((p) => p.id === postId);
+    const imageCount = post?.images?.length || 1;
+
     try {
       await deletePost(postId);
-      await deletePostImage(postId);
+      await deletePostImages(postId, imageCount);
 
       set((state) => ({
         posts: state.posts.filter((p) => p.id !== postId),
