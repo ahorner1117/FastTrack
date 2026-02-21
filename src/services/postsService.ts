@@ -18,12 +18,14 @@ export async function getPosts(
     .select(
       `
       *,
+      post_images(id, image_url, thumbnail_url, position),
       profile:profiles!posts_user_id_fkey(id, display_name, avatar_url),
       run:runs(zero_to_sixty_time, vehicle_name)
     `
     )
     .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1);
+    .range(offset, offset + limit - 1)
+    .order('position', { referencedTable: 'post_images' });
 
   if (visibilityFilter) {
     query = query.eq('visibility', visibilityFilter);
@@ -74,13 +76,17 @@ export async function getPosts(
 
     const likedPostIds = new Set(likes?.map((l) => l.post_id) || []);
 
-    return data.map((post) => ({
+    return data.map((post: any) => ({
       ...post,
       is_liked: likedPostIds.has(post.id),
+      images: (post.post_images || []).sort((a: any, b: any) => a.position - b.position),
     }));
   }
 
-  return data || [];
+  return (data || []).map((post: any) => ({
+    ...post,
+    images: (post.post_images || []).sort((a: any, b: any) => a.position - b.position),
+  }));
 }
 
 export async function getPost(postId: string): Promise<Post | null> {
@@ -93,6 +99,7 @@ export async function getPost(postId: string): Promise<Post | null> {
     .select(
       `
       *,
+      post_images(id, image_url, thumbnail_url, position),
       profile:profiles!posts_user_id_fkey(id, display_name, avatar_url),
       run:runs(zero_to_sixty_time, vehicle_name)
     `
@@ -116,13 +123,16 @@ export async function getPost(postId: string): Promise<Post | null> {
       .eq('post_id', postId)
       .single();
 
-    return { ...data, is_liked: !!like };
+    return { ...data, is_liked: !!like, images: (data.post_images || []).sort((a: any, b: any) => a.position - b.position) };
   }
 
-  return data;
+  return { ...data, images: (data.post_images || []).sort((a: any, b: any) => a.position - b.position) };
 }
 
-export async function createPost(input: CreatePostInput): Promise<Post> {
+export async function createPost(
+  input: CreatePostInput,
+  images: { url: string; thumbnailUrl: string | null; position: number }[]
+): Promise<Post> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -131,12 +141,13 @@ export async function createPost(input: CreatePostInput): Promise<Post> {
     throw new Error('User not authenticated');
   }
 
+  // Insert the post (image_url set to first image for backward compat)
   const { data, error } = await supabase
     .from('posts')
     .insert({
       user_id: user.id,
-      image_url: input.image_url,
-      thumbnail_url: input.thumbnail_url || null,
+      image_url: images[0]?.url || '',
+      thumbnail_url: images[0]?.thumbnailUrl || null,
       caption: input.caption || null,
       vehicle_id: input.vehicle_id || null,
       run_id: input.run_id || null,
@@ -153,11 +164,40 @@ export async function createPost(input: CreatePostInput): Promise<Post> {
     .single();
 
   if (error) {
-    console.error('Error creating post:', error);
     throw error;
   }
 
-  return data;
+  // Insert images into post_images table
+  if (images.length > 0) {
+    const { error: imgError } = await supabase
+      .from('post_images')
+      .insert(
+        images.map((img) => ({
+          post_id: data.id,
+          image_url: img.url,
+          thumbnail_url: img.thumbnailUrl,
+          position: img.position,
+        }))
+      );
+
+    if (imgError) {
+      // Clean up the post if image insert fails
+      await supabase.from('posts').delete().eq('id', data.id);
+      throw imgError;
+    }
+  }
+
+  // Return with images array
+  return {
+    ...data,
+    images: images.map((img, i) => ({
+      id: `temp-${i}`,
+      post_id: data.id,
+      image_url: img.url,
+      thumbnail_url: img.thumbnailUrl,
+      position: img.position,
+    })),
+  };
 }
 
 export async function deletePost(postId: string): Promise<void> {
@@ -290,7 +330,7 @@ export async function getUserPosts(
 ): Promise<Post[]> {
   const { data, error } = await supabase
     .from('posts')
-    .select('id, image_url, thumbnail_url, likes_count, comments_count, visibility, created_at, updated_at, user_id, caption, vehicle_id, run_id, drive_id, location_name')
+    .select('id, image_url, thumbnail_url, likes_count, comments_count, visibility, created_at, updated_at, user_id, caption, vehicle_id, run_id, drive_id, location_name, post_images(id, image_url, thumbnail_url, position)')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1);
@@ -300,5 +340,8 @@ export async function getUserPosts(
     throw error;
   }
 
-  return (data || []) as Post[];
+  return (data || []).map((post: any) => ({
+    ...post,
+    images: (post.post_images || []).sort((a: any, b: any) => a.position - b.position),
+  })) as Post[];
 }
