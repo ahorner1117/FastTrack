@@ -91,7 +91,7 @@ export async function sendPushNotification(
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return;
 
-  const { error } = await supabase.functions.invoke('send-push-notification', {
+  const { data: result, error } = await supabase.functions.invoke('send-push-notification', {
     body: {
       recipient_user_id: recipientUserId,
       title,
@@ -102,6 +102,8 @@ export async function sendPushNotification(
 
   if (error) {
     console.error('Error sending push notification:', error);
+  } else {
+    console.log('Push notification result:', JSON.stringify(result));
   }
 }
 

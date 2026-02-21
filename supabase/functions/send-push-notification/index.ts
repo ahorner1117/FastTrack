@@ -55,31 +55,44 @@ Deno.serve(async (req) => {
       .eq("id", recipient_user_id)
       .single();
 
-    if (profileError || !profile?.push_token) {
-      // No push token = user hasn't enabled notifications, not an error
+    if (profileError) {
+      console.error("Profile lookup error:", profileError);
+      return new Response(
+        JSON.stringify({ success: false, error: "Profile lookup failed", detail: profileError.message }),
+        { headers: jsonHeaders }
+      );
+    }
+
+    if (!profile?.push_token) {
+      console.log("No push token for user:", recipient_user_id);
       return new Response(
         JSON.stringify({ success: true, sent: false, reason: "no_push_token" }),
         { headers: jsonHeaders }
       );
     }
 
+    console.log("Sending push to token:", profile.push_token, "title:", title);
+
     // Send push notification via Expo Push API
+    const pushPayload = {
+      to: profile.push_token,
+      title,
+      body,
+      sound: "default",
+      data: data ?? { screen: "notifications" },
+    };
+
     const pushResponse = await fetch("https://exp.host/--/api/v2/push/send", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
       },
-      body: JSON.stringify({
-        to: profile.push_token,
-        title,
-        body,
-        sound: "default",
-        data: data ?? { screen: "notifications" },
-      }),
+      body: JSON.stringify(pushPayload),
     });
 
     const pushResult = await pushResponse.json();
+    console.log("Expo push response:", JSON.stringify(pushResult));
 
     if (pushResult.data?.status === "error") {
       console.error("Expo push error:", pushResult.data.message);
@@ -90,7 +103,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, sent: true }),
+      JSON.stringify({ success: true, sent: true, ticket: pushResult.data }),
       { headers: jsonHeaders }
     );
   } catch (err) {
