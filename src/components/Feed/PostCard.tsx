@@ -109,13 +109,20 @@ function PostCardComponent({
               </Text>
             )}
           </View>
-          <View>
-            <Text style={[styles.displayName, { color: colors.text }]}>
-              {displayName}
-            </Text>
-            <Text style={[styles.timestamp, { color: colors.textSecondary }]}>
-              {formatTimeAgo(post.created_at)}
-            </Text>
+          <View style={styles.headerTextContainer}>
+            <View style={styles.headerTopRow}>
+              <Text style={[styles.displayName, { color: colors.text }]}>
+                {displayName}
+              </Text>
+              <Text style={[styles.timestamp, { color: colors.textSecondary }]}>
+                {formatTimeAgo(post.created_at)}
+              </Text>
+            </View>
+            {post.location_name && (
+              <Text style={[styles.locationText, { color: colors.textSecondary }]} numberOfLines={1}>
+                {post.location_name}
+              </Text>
+            )}
           </View>
         </Pressable>
         <Pressable onPress={handleMoreOptions} hitSlop={8}>
@@ -203,6 +210,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    flex: 1,
   },
   avatar: {
     width: 36,
@@ -220,11 +228,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  headerTextContainer: {
+    flex: 1,
+  },
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   displayName: {
     fontSize: 14,
     fontWeight: '600',
   },
   timestamp: {
+    fontSize: 12,
+    marginTop: 1,
+  },
+  locationText: {
     fontSize: 12,
     marginTop: 1,
   },
