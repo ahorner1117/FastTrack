@@ -141,6 +141,7 @@ export async function createPost(input: CreatePostInput): Promise<Post> {
       vehicle_id: input.vehicle_id || null,
       run_id: input.run_id || null,
       drive_id: input.drive_id || null,
+      location_name: input.location_name || null,
       visibility: input.visibility || 'public',
     })
     .select(
@@ -289,7 +290,7 @@ export async function getUserPosts(
 ): Promise<Post[]> {
   const { data, error } = await supabase
     .from('posts')
-    .select('id, image_url, thumbnail_url, likes_count, comments_count, visibility, created_at, updated_at, user_id, caption, vehicle_id, run_id, drive_id')
+    .select('id, image_url, thumbnail_url, likes_count, comments_count, visibility, created_at, updated_at, user_id, caption, vehicle_id, run_id, drive_id, location_name')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1);
