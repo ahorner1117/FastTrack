@@ -73,7 +73,7 @@ export default function ReportsQueueScreen() {
         {
           text: 'Hide',
           style: 'destructive',
-          onPress: async (reason) => {
+          onPress: async (reason: string | undefined) => {
             if (!reason || !reason.trim()) {
               Alert.alert('Error', 'Please provide a reason');
               return;

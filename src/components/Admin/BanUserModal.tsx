@@ -31,7 +31,7 @@ export function BanUserModal({
   const [isBanning, setIsBanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const bgColor = isDark ? COLORS.dark.card : '#FFFFFF';
+  const bgColor = isDark ? COLORS.dark.surface : '#FFFFFF';
   const textColor = isDark ? COLORS.dark.text : '#000000';
   const secondaryColor = isDark ? COLORS.dark.textSecondary : '#666666';
   const borderColor = isDark ? COLORS.dark.border : '#E0E0E0';

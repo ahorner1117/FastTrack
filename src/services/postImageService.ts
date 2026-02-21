@@ -162,5 +162,40 @@ export async function deletePostImages(postId: string, imageCount: number = 7): 
   }
 }
 
+export async function deletePostImagesByUrls(imageUrls: string[]): Promise<boolean> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return false;
+
+  try {
+    const filePaths: string[] = [];
+    for (const url of imageUrls) {
+      try {
+        const urlObj = new URL(url);
+        const pathMatch = urlObj.pathname.match(/\/storage\/v1\/object\/public\/post-images\/(.+)/);
+        if (pathMatch) {
+          filePaths.push(pathMatch[1]);
+          // Also try to delete the thumbnail variant
+          const thumbPath = pathMatch[1].replace('.jpg', '_thumb.jpg');
+          if (thumbPath !== pathMatch[1]) {
+            filePaths.push(thumbPath);
+          }
+        }
+      } catch {
+        // Skip invalid URLs
+      }
+    }
+
+    if (filePaths.length > 0) {
+      await supabase.storage.from(POST_IMAGES_BUCKET).remove(filePaths);
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // Legacy alias
 export const deletePostImage = deletePostImages;

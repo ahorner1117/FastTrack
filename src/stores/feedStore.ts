@@ -12,7 +12,7 @@ import {
   deleteComment,
   type FeedScope,
 } from '../services/postsService';
-import { uploadPostImages, deletePostImages } from '../services/postImageService';
+import { uploadPostImages, deletePostImages, deletePostImagesByUrls } from '../services/postImageService';
 import { sendPushNotification } from '../services/notificationService';
 import { supabase } from '../lib/supabase';
 
@@ -274,11 +274,17 @@ export const useFeedStore = create<FeedState>((set, get) => ({
   removePost: async (postId: string) => {
     const { posts } = get();
     const post = posts.find((p) => p.id === postId);
-    const imageCount = post?.images?.length || 1;
+    const imageUrls = post?.images?.map((img) => img.image_url) || [];
 
     try {
       await deletePost(postId);
-      await deletePostImages(postId, imageCount);
+      // Delete storage files using actual URLs from post_images
+      if (imageUrls.length > 0) {
+        await deletePostImagesByUrls(imageUrls);
+      } else {
+        // Fallback for posts without images array loaded
+        await deletePostImages(postId);
+      }
 
       set((state) => ({
         posts: state.posts.filter((p) => p.id !== postId),

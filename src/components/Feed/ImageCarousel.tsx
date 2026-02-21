@@ -86,10 +86,13 @@ function ImageCarouselComponent({ images, width, height }: ImageCarouselProps) {
 
 const styles = StyleSheet.create({
   dotContainer: {
+    position: 'absolute',
+    bottom: 8,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 8,
     gap: 6,
   },
   dot: {

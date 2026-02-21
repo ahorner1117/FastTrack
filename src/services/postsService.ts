@@ -187,10 +187,16 @@ export async function createPost(
     }
   }
 
-  // Return with images array
+  // Fetch the real post_images with DB-generated IDs
+  const { data: postImages } = await supabase
+    .from('post_images')
+    .select('id, post_id, image_url, thumbnail_url, position')
+    .eq('post_id', data.id)
+    .order('position');
+
   return {
     ...data,
-    images: images.map((img, i) => ({
+    images: postImages || images.map((img, i) => ({
       id: `temp-${i}`,
       post_id: data.id,
       image_url: img.url,

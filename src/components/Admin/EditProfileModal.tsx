@@ -36,7 +36,7 @@ export function EditProfileModal({
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const bgColor = isDark ? COLORS.dark.card : '#FFFFFF';
+  const bgColor = isDark ? COLORS.dark.surface : '#FFFFFF';
   const textColor = isDark ? COLORS.dark.text : '#000000';
   const secondaryColor = isDark ? COLORS.dark.textSecondary : '#666666';
   const borderColor = isDark ? COLORS.dark.border : '#E0E0E0';
@@ -61,10 +61,10 @@ export function EditProfileModal({
     try {
       const updates: UpdateProfileInput = {};
       if (displayName !== profile.display_name) {
-        updates.display_name = displayName || null;
+        updates.display_name = displayName || undefined;
       }
       if (avatarUrl !== profile.avatar_url) {
-        updates.avatar_url = avatarUrl.trim() || null;
+        updates.avatar_url = avatarUrl.trim() || undefined;
       }
       if (isAdmin !== profile.is_admin) {
         updates.is_admin = isAdmin;

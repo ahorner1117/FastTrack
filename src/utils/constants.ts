@@ -7,6 +7,11 @@ export const COLORS = {
   secondary: '#00BFFF',
   secondaryDim: '#0099CC',
 
+  // Status colors (top-level for convenience)
+  error: '#FF4444',
+  warning: '#FFAA00',
+  success: '#00FF7F',
+
   // Dark theme
   dark: {
     background: '#000000',

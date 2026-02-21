@@ -40,7 +40,7 @@ export function PostListItem({
         {
           text: 'Hide',
           style: 'destructive',
-          onPress: (reason) => {
+          onPress: (reason: string | undefined) => {
             if (reason && reason.trim()) {
               onHide(post.id);
             } else {
@@ -72,7 +72,7 @@ export function PostListItem({
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: (reason) => {
+          onPress: (reason: string | undefined) => {
             if (reason && reason.trim()) {
               onDelete(post.id);
             } else {
