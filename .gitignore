@@ -40,6 +40,7 @@ credentials.json
 
 # Claude Code
 CLAUDE.md
+docs/*
 
 # Reserved usernames/vehicle makes (sensitive content lists)
 src/utils/reservedUsernames.json
