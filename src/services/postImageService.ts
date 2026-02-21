@@ -11,103 +11,109 @@ export interface ImageUploadError {
   message: string;
 }
 
-export async function uploadPostImage(
+export interface UploadedImage {
+  url: string;
+  thumbnailUrl: string | null;
+  position: number;
+}
+
+async function uploadSingleImage(
   localUri: string,
+  userId: string,
+  postId: string,
+  position: number
+): Promise<{ url: string; thumbnailUrl: string | null }> {
+  const compressedUri = await compressPostImage(localUri);
+
+  const fileSize = await getFileSize(compressedUri);
+  if (fileSize > MAX_FILE_SIZE_BYTES) {
+    throw new Error('Image is too large. Please select a smaller image.');
+  }
+
+  const base64 = await readAsStringAsync(compressedUri, {
+    encoding: EncodingType.Base64,
+  });
+
+  const fileName = `${userId}/${postId}_${position}.jpg`;
+
+  const { data, error } = await supabase.storage
+    .from(POST_IMAGES_BUCKET)
+    .upload(fileName, decode(base64), {
+      contentType: 'image/jpeg',
+      upsert: true,
+    });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from(POST_IMAGES_BUCKET).getPublicUrl(data.path);
+
+  // Generate and upload thumbnail (best-effort)
+  let thumbnailUrl: string | null = null;
+  try {
+    const thumbnailUri = await compressThumbnail(localUri);
+    const thumbBase64 = await readAsStringAsync(thumbnailUri, {
+      encoding: EncodingType.Base64,
+    });
+
+    const thumbFileName = `${userId}/${postId}_${position}_thumb.jpg`;
+
+    const { data: thumbData, error: thumbError } = await supabase.storage
+      .from(POST_IMAGES_BUCKET)
+      .upload(thumbFileName, decode(thumbBase64), {
+        contentType: 'image/jpeg',
+        upsert: true,
+      });
+
+    if (!thumbError && thumbData) {
+      const {
+        data: { publicUrl: thumbPublicUrl },
+      } = supabase.storage.from(POST_IMAGES_BUCKET).getPublicUrl(thumbData.path);
+      thumbnailUrl = thumbPublicUrl;
+    }
+  } catch {
+    // Thumbnail is best-effort
+  }
+
+  return { url: publicUrl, thumbnailUrl };
+}
+
+export async function uploadPostImages(
+  localUris: string[],
   postId: string
-): Promise<{ url: string | null; thumbnailUrl: string | null; error: ImageUploadError | null }> {
+): Promise<{ images: UploadedImage[]; error: ImageUploadError | null }> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
     return {
-      url: null,
-      thumbnailUrl: null,
+      images: [],
       error: { type: 'not_authenticated', message: 'User not authenticated' },
     };
   }
 
   try {
-    // Compress the image
-    const compressedUri = await compressPostImage(localUri);
+    const results = await Promise.all(
+      localUris.map((uri, index) =>
+        uploadSingleImage(uri, user.id, postId, index)
+      )
+    );
 
-    // Check file size after compression
-    const fileSize = await getFileSize(compressedUri);
-    if (fileSize > MAX_FILE_SIZE_BYTES) {
-      return {
-        url: null,
-        thumbnailUrl: null,
-        error: {
-          type: 'size_exceeded',
-          message: 'Image is too large. Please select a smaller image.',
-        },
-      };
-    }
-
-    // Read file as base64
-    const base64 = await readAsStringAsync(compressedUri, {
-      encoding: EncodingType.Base64,
-    });
-
-    // Always use jpg after compression
-    const fileName = `${user.id}/${postId}.jpg`;
-
-    const { data, error } = await supabase.storage
-      .from(POST_IMAGES_BUCKET)
-      .upload(fileName, decode(base64), {
-        contentType: 'image/jpeg',
-        upsert: true,
-      });
-
-    if (error) {
-      console.error('Error uploading post image:', error);
-      return {
-        url: null,
-        thumbnailUrl: null,
-        error: { type: 'upload_failed', message: error.message },
-      };
-    }
-
-    // Get public URL for full image
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from(POST_IMAGES_BUCKET).getPublicUrl(data.path);
-
-    // Generate and upload thumbnail (best-effort)
-    let thumbnailUrl: string | null = null;
-    try {
-      const thumbnailUri = await compressThumbnail(localUri);
-      const thumbBase64 = await readAsStringAsync(thumbnailUri, {
-        encoding: EncodingType.Base64,
-      });
-
-      const thumbFileName = `${user.id}/${postId}_thumb.jpg`;
-
-      const { data: thumbData, error: thumbError } = await supabase.storage
-        .from(POST_IMAGES_BUCKET)
-        .upload(thumbFileName, decode(thumbBase64), {
-          contentType: 'image/jpeg',
-          upsert: true,
-        });
-
-      if (thumbError) {
-        console.warn('Thumbnail upload failed, continuing without thumbnail:', thumbError);
-      } else {
-        const {
-          data: { publicUrl: thumbPublicUrl },
-        } = supabase.storage.from(POST_IMAGES_BUCKET).getPublicUrl(thumbData.path);
-        thumbnailUrl = thumbPublicUrl;
-      }
-    } catch (thumbErr) {
-      console.warn('Thumbnail generation/upload failed, continuing without thumbnail:', thumbErr);
-    }
-
-    return { url: publicUrl, thumbnailUrl, error: null };
-  } catch (error) {
-    console.error('Failed to upload post image:', error);
     return {
-      url: null,
-      thumbnailUrl: null,
+      images: results.map((r, index) => ({
+        url: r.url,
+        thumbnailUrl: r.thumbnailUrl,
+        position: index,
+      })),
+      error: null,
+    };
+  } catch (error) {
+    return {
+      images: [],
       error: {
         type: 'upload_failed',
         message: error instanceof Error ? error.message : 'Upload failed',
@@ -116,35 +122,45 @@ export async function uploadPostImage(
   }
 }
 
-export async function deletePostImage(postId: string): Promise<boolean> {
+// Legacy single-image upload (delegates to multi)
+export async function uploadPostImage(
+  localUri: string,
+  postId: string
+): Promise<{ url: string | null; thumbnailUrl: string | null; error: ImageUploadError | null }> {
+  const result = await uploadPostImages([localUri], postId);
+  if (result.error || result.images.length === 0) {
+    return { url: null, thumbnailUrl: null, error: result.error };
+  }
+  return {
+    url: result.images[0].url,
+    thumbnailUrl: result.images[0].thumbnailUrl,
+    error: null,
+  };
+}
+
+export async function deletePostImages(postId: string, imageCount: number = 7): Promise<boolean> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    return false;
-  }
+  if (!user) return false;
 
   try {
-    // Try to delete common image extensions and their thumbnail variants
-    const extensions = ['jpg', 'jpeg', 'png', 'heic', 'webp'];
-    const filePaths = extensions.flatMap((ext) => [
-      `${user.id}/${postId}.${ext}`,
-      `${user.id}/${postId}_thumb.${ext}`,
-    ]);
-
-    const { error } = await supabase.storage
-      .from(POST_IMAGES_BUCKET)
-      .remove(filePaths);
-
-    if (error) {
-      console.error('Error deleting post image:', error);
-      return false;
+    const filePaths: string[] = [];
+    for (let i = 0; i < imageCount; i++) {
+      filePaths.push(`${user.id}/${postId}_${i}.jpg`);
+      filePaths.push(`${user.id}/${postId}_${i}_thumb.jpg`);
     }
+    // Also try legacy format (no position suffix)
+    filePaths.push(`${user.id}/${postId}.jpg`);
+    filePaths.push(`${user.id}/${postId}_thumb.jpg`);
 
+    await supabase.storage.from(POST_IMAGES_BUCKET).remove(filePaths);
     return true;
-  } catch (error) {
-    console.error('Failed to delete post image:', error);
+  } catch {
     return false;
   }
 }
+
+// Legacy alias
+export const deletePostImage = deletePostImages;
