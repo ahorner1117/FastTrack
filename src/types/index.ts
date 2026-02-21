@@ -250,6 +250,7 @@ export interface Post {
   vehicle_id: string | null;
   run_id: string | null;
   drive_id: string | null;
+  location_name: string | null;
   visibility: PostVisibility;
   likes_count: number;
   comments_count: number;
@@ -277,6 +278,7 @@ export interface CreatePostInput {
   vehicle_id?: string;
   run_id?: string;
   drive_id?: string;
+  location_name?: string;
   visibility?: PostVisibility;
 }
 
