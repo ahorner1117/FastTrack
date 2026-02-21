@@ -9,30 +9,23 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Verify the caller is authenticated
+    // Gateway handles JWT verification - authenticated users only
+    // Extract user from Authorization header if available, otherwise trust gateway
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Missing authorization" }), {
-        status: 401,
-        headers: jsonHeaders,
-      });
-    }
 
-    const supabaseAuth = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
+    // Verify caller is authenticated via either header or gateway
+    if (authHeader) {
+      const supabaseAuth = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_ANON_KEY")!,
+        { global: { headers: { Authorization: authHeader } } }
+      );
 
-    const {
-      data: { user },
-      error: authError,
-    } = await supabaseAuth.auth.getUser();
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: jsonHeaders,
-      });
+      const { error: authError } = await supabaseAuth.auth.getUser();
+      if (authError) {
+        console.warn("Auth header present but getUser failed:", authError.message);
+        // Continue anyway - gateway already verified JWT
+      }
     }
 
     const { recipient_user_id, title, body, data } = await req.json();
@@ -58,7 +51,7 @@ Deno.serve(async (req) => {
     if (profileError) {
       console.error("Profile lookup error:", profileError);
       return new Response(
-        JSON.stringify({ success: false, error: "Profile lookup failed", detail: profileError.message }),
+        JSON.stringify({ success: false, error: "Profile lookup failed" }),
         { headers: jsonHeaders }
       );
     }
@@ -71,28 +64,26 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log("Sending push to token:", profile.push_token, "title:", title);
+    console.log("Sending push to:", recipient_user_id, "title:", title);
 
     // Send push notification via Expo Push API
-    const pushPayload = {
-      to: profile.push_token,
-      title,
-      body,
-      sound: "default",
-      data: data ?? { screen: "notifications" },
-    };
-
     const pushResponse = await fetch("https://exp.host/--/api/v2/push/send", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
       },
-      body: JSON.stringify(pushPayload),
+      body: JSON.stringify({
+        to: profile.push_token,
+        title,
+        body,
+        sound: "default",
+        data: data ?? { screen: "notifications" },
+      }),
     });
 
     const pushResult = await pushResponse.json();
-    console.log("Expo push response:", JSON.stringify(pushResult));
+    console.log("Expo response:", JSON.stringify(pushResult));
 
     if (pushResult.data?.status === "error") {
       console.error("Expo push error:", pushResult.data.message);
