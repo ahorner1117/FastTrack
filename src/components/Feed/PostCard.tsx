@@ -11,6 +11,7 @@ import {
 import { Heart, MessageCircle, Trash2, MoreVertical, Flag } from 'lucide-react-native';
 import { COLORS } from '@/src/utils/constants';
 import { MentionText } from '@/src/utils/mentions';
+import { ImageCarousel } from './ImageCarousel';
 import { ReportModal } from './ReportModal';
 import { reportPost } from '@/src/services/reportingService';
 import type { Post } from '@/src/types';
@@ -138,12 +139,20 @@ function PostCardComponent({
         onSubmit={handleReportSubmit}
       />
 
-      {/* Image */}
-      <Image
-        source={{ uri: post.image_url, cache: 'force-cache' }}
-        style={styles.image}
-        resizeMode="cover"
-      />
+      {/* Images */}
+      {post.images && post.images.length > 0 ? (
+        <ImageCarousel
+          images={post.images}
+          width={SCREEN_WIDTH - 32}
+          height={SCREEN_WIDTH - 32}
+        />
+      ) : (
+        <Image
+          source={{ uri: post.image_url, cache: 'force-cache' }}
+          style={styles.image}
+          resizeMode="cover"
+        />
+      )}
 
       {/* Run info if attached */}
       {post.run && post.run.zero_to_sixty_time && (
